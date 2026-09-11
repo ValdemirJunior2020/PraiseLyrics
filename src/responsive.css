@@ -1,0 +1,293 @@
+/* Responsive overrides for PraiseLyrics control UI */
+
+/* Fluid desktop sizing */
+.app-shell {
+  padding: clamp(10px, 1.5vw, 22px);
+}
+
+.topbar,
+.statusbar,
+.workspace {
+  width: min(100%, 1800px);
+}
+
+.topbar-actions > button,
+.mini-actions > button {
+  min-height: 42px;
+}
+
+.verse-strip {
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.verse-card {
+  flex-basis: clamp(250px, 24vw, 340px);
+}
+
+.gradient-swatch {
+  min-width: 0;
+}
+
+.image-controls > * {
+  min-width: 0;
+}
+
+/* Medium desktop / laptop */
+@media (max-width: 1360px) {
+  .workspace {
+    grid-template-columns: 230px minmax(0, 1fr);
+  }
+
+  .lower-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .appearance-panel,
+  .background-panel {
+    min-width: 0;
+  }
+
+  .gradient-grid {
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+  }
+
+  .background-links {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Tablet / smaller laptop */
+@media (max-width: 1024px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    min-height: auto;
+  }
+
+  .song-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 280px;
+  }
+
+  .screen-box {
+    margin-top: 16px;
+  }
+
+  .section-head.wide {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mini-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .gradient-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .control-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .image-controls {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .image-controls .upload-button,
+  .image-controls .ghost {
+    width: 100%;
+  }
+
+  .background-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Mobile landscape / large phones */
+@media (max-width: 760px) {
+  .app-shell {
+    padding: 8px;
+  }
+
+  .topbar {
+    gap: 14px;
+  }
+
+  .topbar h1 {
+    font-size: clamp(24px, 8vw, 34px);
+  }
+
+  .topbar p {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .topbar-actions,
+  .mini-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .topbar-actions > button,
+  .mini-actions > button {
+    width: 100%;
+  }
+
+  .statusbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    line-height: 1.35;
+  }
+
+  .panel {
+    border-radius: 12px;
+  }
+
+  .sidebar,
+  .verses-panel,
+  .appearance-panel,
+  .background-panel {
+    padding: 12px;
+  }
+
+  .song-list {
+    grid-template-columns: 1fr;
+    max-height: 220px;
+  }
+
+  .verse-strip {
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+
+  .verse-card {
+    flex: 0 0 min(88vw, 330px);
+    min-height: 205px;
+  }
+
+  .verse-card-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .verse-card-actions button {
+    min-height: 34px;
+  }
+
+  .keyboard-help {
+    line-height: 1.45;
+  }
+
+  .gradient-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gradient-swatch {
+    height: 58px;
+  }
+
+  .control-grid,
+  .background-links,
+  .image-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .image-controls > button,
+  .image-controls > .upload-button {
+    width: 100%;
+  }
+
+  .modal-backdrop {
+    padding: 8px;
+  }
+
+  .modal,
+  .modal.small {
+    width: 100%;
+    max-height: 96vh;
+    border-radius: 12px;
+    padding: 14px;
+  }
+
+  .modal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Small phones */
+@media (max-width: 460px) {
+  .topbar-actions,
+  .mini-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .section-head {
+    align-items: flex-start;
+  }
+
+  .section-head h2 {
+    font-size: 17px;
+  }
+
+  .verse-card {
+    flex-basis: calc(100vw - 40px);
+  }
+
+  .verse-card p {
+    font-size: 13px;
+  }
+
+  .verse-card-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gradient-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .gradient-swatch span {
+    max-width: calc(100% - 16px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .modal-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Keep the lyrics wall clean and proportional at any resolution */
+.display-root {
+  min-width: 100vw;
+  min-height: 100vh;
+}
+
+.display-lyrics {
+  max-height: 94vh;
+  overflow: hidden;
+  padding: clamp(18px, 3vh, 54px) clamp(18px, 3vw, 72px);
+}
+
+@media (orientation: portrait) {
+  .display-lyrics {
+    width: min(92vw, 1200px) !important;
+  }
+}
