@@ -70,13 +70,23 @@ function loadSavedState() {
   }
 }
 
+function getSlideStyle(song, slideIndex, style) {
+  const slide = song?.slides?.[slideIndex];
+  if (!slide) return style;
+  return {
+    ...style,
+    background: slide.background ?? style.background,
+    backgroundImage: slide.backgroundImage ?? style.backgroundImage,
+  };
+}
+
 function buildLivePayload(song, slideIndex, style, blank) {
   return {
     type: 'LIVE_UPDATE',
     at: Date.now(),
     songTitle: song?.title || '',
     slide: !blank && song?.slides?.[slideIndex] ? song.slides[slideIndex] : null,
-    style,
+    style: getSlideStyle(song, slideIndex, style),
     blank,
   };
 }
@@ -173,10 +183,11 @@ function ControlView() {
   const [screenOptions, setScreenOptions] = useState([]);
   const [selectedScreenId, setSelectedScreenId] = useState(saved?.selectedScreenId || '');
   const [status, setStatus] = useState('Wall is not open yet.');
-  const [imageUrl, setImageUrl] = useState(style.backgroundImage || '');
+  const [imageUrl, setImageUrl] = useState('');
   const wallRef = useRef(null);
 
   const song = songs.find((item) => item.id === songId) || songs[0];
+  const selectedSlide = song?.slides?.[selectedIndex];
 
   useEffect(() => {
     localStorage.setItem(
@@ -184,6 +195,10 @@ function ControlView() {
       JSON.stringify({ songs, songId: song?.id, liveIndex, selectedIndex, style, blank, selectedScreenId })
     );
   }, [songs, songId, liveIndex, selectedIndex, style, blank, selectedScreenId, song?.id]);
+
+  useEffect(() => {
+    setImageUrl(selectedSlide?.backgroundImage || '');
+  }, [selectedSlide?.id, selectedSlide?.backgroundImage]);
 
   const sendLive = React.useCallback(
     (nextIndex = liveIndex, nextBlank = blank, nextStyle = style) => {
@@ -234,6 +249,22 @@ function ControlView() {
 
   function updateSong(mutator) {
     setSongs((current) => current.map((item) => (item.id === song.id ? mutator(item) : item)));
+  }
+
+  function updateSelectedSlide(changes) {
+    if (!selectedSlide) return;
+    updateSong((current) => ({
+      ...current,
+      slides: current.slides.map((slide, index) =>
+        index === selectedIndex ? { ...slide, ...changes } : slide
+      ),
+    }));
+  }
+
+  function applyVerseBackground(background) {
+    updateSelectedSlide({ background, backgroundImage: '' });
+    setImageUrl('');
+    setStatus(`${selectedSlide?.label || 'Selected verse'} background updated.`);
   }
 
   function makeLive(index) {
@@ -378,7 +409,8 @@ function ControlView() {
 
   function applyImageUrl() {
     const next = imageUrl.trim();
-    setStyle((current) => ({ ...current, backgroundImage: next }));
+    updateSelectedSlide({ backgroundImage: next });
+    setStatus(`${selectedSlide?.label || 'Selected verse'} image background updated.`);
   }
 
   function handleImageUpload(event) {
@@ -392,7 +424,8 @@ function ControlView() {
     reader.onload = () => {
       const dataUrl = String(reader.result || '');
       setImageUrl(dataUrl);
-      setStyle((current) => ({ ...current, backgroundImage: dataUrl }));
+      updateSelectedSlide({ backgroundImage: dataUrl });
+      setStatus(`${selectedSlide?.label || 'Selected verse'} image background updated.`);
     };
     reader.readAsDataURL(file);
   }
@@ -476,10 +509,15 @@ function ControlView() {
             </div>
 
             <div className="verse-strip">
-              {song?.slides?.map((slide, index) => (
+              {song?.slides?.map((slide, index) => {
+                const cardBackground = slide.backgroundImage
+                  ? `linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.45)), url("${slide.backgroundImage}")`
+                  : slide.background;
+                return (
                 <article
                   key={slide.id}
                   className={`verse-card ${index === liveIndex && !blank ? 'live-card' : ''} ${index === selectedIndex ? 'selected-card' : ''}`}
+                  style={cardBackground ? { background: cardBackground, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
                   onClick={() => setSelectedIndex(index)}
                   onDoubleClick={() => setEditingSlide(slide.id)}
                 >
@@ -497,7 +535,7 @@ function ControlView() {
                     <button className="delete" onClick={(event) => { event.stopPropagation(); deleteSlide(index); }}>Delete</button>
                   </div>
                 </article>
-              ))}
+              )})}
 
               {!song?.slides?.length && (
                 <button className="empty-card" onClick={addSlide}>＋ Add the first verse</button>
@@ -512,7 +550,7 @@ function ControlView() {
               <div className="section-head">
                 <div>
                   <span className="section-label">Wall Appearance</span>
-                  <h2>Lyrics Style</h2>
+                  <h2>Background for {selectedSlide?.label || 'Selected Verse'}</h2>
                 </div>
               </div>
 
@@ -520,10 +558,10 @@ function ControlView() {
                 {DEFAULT_GRADIENTS.map((preset) => (
                   <button
                     key={preset.name}
-                    title={preset.name}
+                    title={`Apply ${preset.name} to ${selectedSlide?.label || 'selected verse'}`}
                     className="gradient-swatch"
                     style={{ background: preset.value }}
-                    onClick={() => setStyle((current) => ({ ...current, background: preset.value, backgroundImage: '' }))}
+                    onClick={() => applyVerseBackground(preset.value)}
                   >
                     <span>{preset.name}</span>
                   </button>
@@ -543,9 +581,9 @@ function ControlView() {
 
               <div className="image-controls">
                 <label>Background image URL<input value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="Paste a direct image URL" /></label>
-                <button className="secondary" onClick={applyImageUrl}>Use URL</button>
-                <label className="upload-button">Upload Image<input type="file" accept="image/*" onChange={handleImageUpload} /></label>
-                <button className="ghost" onClick={() => { setImageUrl(''); setStyle((current) => ({ ...current, backgroundImage: '' })); }}>Clear Image</button>
+                <button className="secondary" onClick={applyImageUrl}>Use on Selected Verse</button>
+                <label className="upload-button">Upload Image for Selected Verse<input type="file" accept="image/*" onChange={handleImageUpload} /></label>
+                <button className="ghost" onClick={() => { setImageUrl(''); updateSelectedSlide({ backgroundImage: '' }); }}>Clear Verse Image</button>
               </div>
             </div>
 
@@ -556,13 +594,13 @@ function ControlView() {
                   <h2>Find Worship Images</h2>
                 </div>
               </div>
-              <p className="panel-copy">Open a free Unsplash search, download an image you like, then use Upload Image above. This keeps the display fast and avoids relying on a remote image during church.</p>
+              <p className="panel-copy">Select a verse first. Then choose a color above or download a free image and upload it. Each verse can have its own background, and it stays saved locally on this PC.</p>
               <div className="background-links">
                 {FREE_BACKGROUND_LINKS.map((item) => (
                   <a key={item.url} href={item.url} target="_blank" rel="noreferrer">{item.label}<span>↗</span></a>
                 ))}
               </div>
-              <div className="tip-box"><strong>Best for church:</strong> darker images with empty space in the center make lyrics easier to read. Your selected image stays saved in this browser.</div>
+              <div className="tip-box"><strong>How it works:</strong> click a verse card, then click a color or upload an image. Only that selected verse changes.</div>
             </div>
           </div>
         </section>
