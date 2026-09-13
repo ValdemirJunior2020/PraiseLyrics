@@ -5,6 +5,8 @@ import './styles.css';
 import './responsive.css';
 import './extras.css';
 import './lyricsSearch.js';
+import './fullLyricsPaste.css';
+import './fullLyricsPaste.js';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
