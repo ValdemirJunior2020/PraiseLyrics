@@ -4,6 +4,7 @@ import App from './App.jsx';
 import './styles.css';
 import './responsive.css';
 import './extras.css';
+import './lyricsSearch.js';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
