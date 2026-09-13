@@ -1,4 +1,12 @@
-const SECTION_RE = /^\s*\[?\s*(?:(verse|verso)\s*(\d+)?|(chorus|refr[aã]o|coro)|(pre[-\s]?chorus|pr[eé][ -]?refr[aã]o)|(bridge|ponte)|(intro|introdu[cç][aã]o)|(outro|final)|(tag)|(interlude|interl[uú]dio)|(vamp))\s*[:\-–—]?\s*\]?\s*$/i;
+const SECTION_RE = /^\s*\[?\s*(?:(verse|verso)\s*(\d+)?|(chorus|refr[aã]o|coro)|(pre[-\s]?chorus|pr[eé][ -]?refr[aã]o)|(bridge|ponte)|(intro|introdu[cç][aã]o)|(outro|final)|(tag)|(interlude|interl[uú]dio)|(vamp))(?:\s*:\s*[^\]]+)?\s*\]?\s*$/i;
+const MARKDOWN_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+
+function cleanPastedLine(line) {
+  return String(line || '')
+    .replace(MARKDOWN_LINK_RE, '$1')
+    .replace(/\u200b/g, '')
+    .trimEnd();
+}
 
 function normalizeLabel(match, language, counts) {
   const raw = (match?.[1] || match?.[3] || match?.[4] || match?.[5] || match?.[6] || match?.[7] || match?.[8] || match?.[9] || match?.[10] || '').toLowerCase();
@@ -22,7 +30,13 @@ function normalizeLabel(match, language, counts) {
 }
 
 export function parseFullLyrics(input, language = 'en') {
-  const text = String(input || '').replace(/\r\n?/g, '\n').trim();
+  const text = String(input || '')
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map(cleanPastedLine)
+    .join('\n')
+    .trim();
+
   if (!text) return [];
 
   const lines = text.split('\n');
@@ -47,9 +61,7 @@ export function parseFullLyrics(input, language = 'en') {
       continue;
     }
 
-    if (!current) {
-      current = { label: '', lines: [] };
-    }
+    if (!current) current = { label: '', lines: [] };
     current.lines.push(line);
   }
   pushCurrent();
@@ -170,7 +182,7 @@ function buildModal(language) {
         </div>
         <button type="button" class="bulk-close">×</button>
       </div>
-      <p class="bulk-help">${pt ? 'Cole a letra inteira. O PraiseLyrics reconhece Verso, Refrão, Ponte, Pré-Refrão, Intro e Final. Também reconhece o formato [Verse 1], [Chorus] e [Bridge] usado pelo Genius.' : 'Paste the complete lyrics. PraiseLyrics recognizes Verse, Chorus, Bridge, Pre-Chorus, Intro and Outro. It also recognizes Genius-style headings like [Verse 1], [Chorus] and [Bridge].'}</p>
+      <p class="bulk-help">${pt ? 'Cole a letra inteira. O PraiseLyrics reconhece Verso, Refrão, Ponte, Pré-Refrão, Intro e Final. Também limpa nomes de cantores nos títulos e remove links copiados do Genius.' : 'Paste the complete lyrics. PraiseLyrics recognizes Verse, Chorus, Bridge, Pre-Chorus, Intro and Outro. It also removes singer names from headings and cleans Genius links automatically.'}</p>
       <div class="bulk-source-row">
         <button type="button" class="bulk-source-button">🔎 ${pt ? 'Abrir Genius para buscar a letra' : 'Open Genius to find lyrics'}</button>
         <small>${pt ? 'Abre a busca usando o nome da Lyrics atual.' : 'Opens a search using the current Lyrics name.'}</small>
