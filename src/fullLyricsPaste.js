@@ -1,4 +1,4 @@
-const SECTION_RE = /^\s*(?:(verse|verso)\s*(\d+)?|(chorus|refr[aã]o|coro)|(pre[-\s]?chorus|pr[eé][ -]?refr[aã]o)|(bridge|ponte)|(intro|introdu[cç][aã]o)|(outro|final)|(tag)|(interlude|interl[uú]dio)|(vamp))\s*[:\-–—]?\s*$/i;
+const SECTION_RE = /^\s*\[?\s*(?:(verse|verso)\s*(\d+)?|(chorus|refr[aã]o|coro)|(pre[-\s]?chorus|pr[eé][ -]?refr[aã]o)|(bridge|ponte)|(intro|introdu[cç][aã]o)|(outro|final)|(tag)|(interlude|interl[uú]dio)|(vamp))\s*[:\-–—]?\s*\]?\s*$/i;
 
 function normalizeLabel(match, language, counts) {
   const raw = (match?.[1] || match?.[3] || match?.[4] || match?.[5] || match?.[6] || match?.[7] || match?.[8] || match?.[9] || match?.[10] || '').toLowerCase();
@@ -102,6 +102,19 @@ function getLanguage() {
   return ptFlag?.classList.contains('active') ? 'pt' : 'en';
 }
 
+function getCurrentLyricsTitle() {
+  const title = document.querySelector('.editable-title')?.textContent || '';
+  return title.replace('✎', '').trim();
+}
+
+function openGeniusSearch() {
+  const title = getCurrentLyricsTitle();
+  const url = title
+    ? `https://genius.com/search?q=${encodeURIComponent(title)}`
+    : 'https://genius.com/';
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 async function deleteCurrentSlides() {
   let safety = 100;
   while (document.querySelector('.verse-card-actions .delete') && safety-- > 0) {
@@ -157,7 +170,11 @@ function buildModal(language) {
         </div>
         <button type="button" class="bulk-close">×</button>
       </div>
-      <p class="bulk-help">${pt ? 'Cole a letra inteira. O PraiseLyrics reconhece Verso, Refrão, Ponte, Pré-Refrão, Intro e Final. Sem títulos, ele usa linhas em branco.' : 'Paste the complete lyrics. PraiseLyrics recognizes Verse, Chorus, Bridge, Pre-Chorus, Intro and Outro. Without headings, blank lines become verses.'}</p>
+      <p class="bulk-help">${pt ? 'Cole a letra inteira. O PraiseLyrics reconhece Verso, Refrão, Ponte, Pré-Refrão, Intro e Final. Também reconhece o formato [Verse 1], [Chorus] e [Bridge] usado pelo Genius.' : 'Paste the complete lyrics. PraiseLyrics recognizes Verse, Chorus, Bridge, Pre-Chorus, Intro and Outro. It also recognizes Genius-style headings like [Verse 1], [Chorus] and [Bridge].'}</p>
+      <div class="bulk-source-row">
+        <button type="button" class="bulk-source-button">🔎 ${pt ? 'Abrir Genius para buscar a letra' : 'Open Genius to find lyrics'}</button>
+        <small>${pt ? 'Abre a busca usando o nome da Lyrics atual.' : 'Opens a search using the current Lyrics name.'}</small>
+      </div>
       <textarea class="bulk-input" rows="15" placeholder="${pt ? 'Cole toda a letra aqui…' : 'Paste the full lyrics here…'}"></textarea>
       <label class="bulk-replace"><input type="checkbox" checked> ${pt ? 'Substituir as telas atuais desta Lyrics' : 'Replace the current slides in this Lyrics'}</label>
       <div class="bulk-preview-title">${pt ? 'PRÉVIA' : 'PREVIEW'}</div>
@@ -172,6 +189,7 @@ function buildModal(language) {
   const close = () => overlay.remove();
   overlay.querySelector('.bulk-close').addEventListener('click', close);
   overlay.querySelector('.bulk-cancel').addEventListener('click', close);
+  overlay.querySelector('.bulk-source-button').addEventListener('click', openGeniusSearch);
   overlay.addEventListener('mousedown', (event) => { if (event.target === overlay) close(); });
 
   const input = overlay.querySelector('.bulk-input');
