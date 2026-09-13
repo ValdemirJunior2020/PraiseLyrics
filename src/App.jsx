@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { STARTER_LYRICS, mergeStarterLyrics } from './starterLyrics.js';
 
 const CHANNEL_NAME = 'praise-lyrics-live-v2';
 const LIBRARY_FILE = 'PraiseLyrics-Library.json';
@@ -364,8 +365,8 @@ function DisplayView() {
 function ControlView() {
   const [language, setLanguage] = useState('en');
   const t = COPY[language];
-  const [lyricsList, setLyricsList] = useState([DEFAULT_LYRICS]);
-  const [lyricsId, setLyricsId] = useState(DEFAULT_LYRICS.id);
+  const [lyricsList, setLyricsList] = useState(() => STARTER_LYRICS);
+  const [lyricsId, setLyricsId] = useState(STARTER_LYRICS[0].id);
   const [liveIndex, setLiveIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [style, setStyle] = useState(DEFAULT_STYLE);
@@ -418,8 +419,9 @@ function ControlView() {
         setDirectoryHandle(handle);
         setFolderReady(true);
         if (saved?.lyrics?.length) {
-          setLyricsList(saved.lyrics);
-          setLyricsId(saved.activeLyricsId || saved.lyrics[0].id);
+          const mergedLyrics = mergeStarterLyrics(saved.lyrics);
+          setLyricsList(mergedLyrics);
+          setLyricsId(saved.activeLyricsId || mergedLyrics[0].id);
           setStyle({ ...DEFAULT_STYLE, ...(saved.style || {}) });
         }
         setSaveStatus(COPY[language].folderReady);
