@@ -1,0 +1,18 @@
+{
+  "name": "PraiseLyrics",
+  "short_name": "PraiseLyrics",
+  "description": "Lightweight church lyrics controller for a control PC and TV wall.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050607",
+  "theme_color": "#070707",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
