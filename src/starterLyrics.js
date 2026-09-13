@@ -55,7 +55,7 @@ export const STARTER_LYRICS = [
   makeLyrics('me-atraiu', 'Me Atraiu', 'Gabriela Rocha', 'pt'),
   makeLyrics('ninguem-explica-deus', 'Ninguém Explica Deus', 'Preto no Branco', 'pt'),
   makeLyrics('todavia-me-alegrarei', 'Todavia Me Alegrarei', 'Samuel Messias', 'pt'),
-  makeLyrics('y​​eshua', 'Yeshua', 'Casa Worship / versões brasileiras', 'pt'),
+  makeLyrics('yeshua', 'Yeshua', 'Casa Worship / versões brasileiras', 'pt'),
   makeLyrics('eu-te-vejo-em-tudo', 'Eu Te Vejo em Tudo', 'Casa Worship', 'pt'),
   makeLyrics('santo-pra-sempre', 'Santo Pra Sempre', 'Gabriel Guedes', 'pt'),
   makeLyrics('ruja-o-leao', 'Ruja o Leão', 'Talita Catanzaro / Isaías Saad', 'pt'),
