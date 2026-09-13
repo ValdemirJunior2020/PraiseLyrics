@@ -1,7 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-const CHANNEL_NAME = 'praise-lyrics-live-v1';
-const STORAGE_KEY = 'praise-lyrics-state-v1';
+const CHANNEL_NAME = 'praise-lyrics-live-v2';
+const LIBRARY_FILE = 'PraiseLyrics-Library.json';
+const HANDLE_DB = 'praise-lyrics-permissions';
+const HANDLE_STORE = 'handles';
+const HANDLE_KEY = 'lyrics-folder';
 
 const DEFAULT_GRADIENTS = [
   { name: 'Midnight', value: 'linear-gradient(135deg,#020617 0%,#111827 45%,#1e293b 100%)' },
@@ -29,7 +32,7 @@ const FREE_BACKGROUND_LINKS = [
   { label: 'Light Rays', url: 'https://unsplash.com/s/photos/light-rays' },
 ];
 
-const DEFAULT_SONG = {
+const DEFAULT_LYRICS = {
   id: crypto.randomUUID(),
   title: 'Amazing Grace',
   slides: [
@@ -60,18 +63,227 @@ const DEFAULT_STYLE = {
   maxWidth: 88,
 };
 
-function loadSavedState() {
+const COPY = {
+  en: {
+    appTitle: 'Church Lyrics Control',
+    appSubtitle: 'Control everything here. The TV wall only receives the live lyrics.',
+    detect: 'Detect Displays',
+    openWall: 'Open Wall',
+    showLyrics: 'Show Lyrics',
+    blankWall: 'Blank Wall',
+    wallBlank: 'WALL BLANK',
+    live: 'LIVE',
+    library: 'Lyrics Library',
+    lyricsCount: (n) => `${n} ${n === 1 ? 'Lyrics' : 'Lyrics'}`,
+    newLyrics: 'New Lyrics',
+    renameLyrics: 'Rename Lyrics',
+    deleteLyrics: 'Delete Lyrics',
+    chooseFolder: 'Choose Lyrics Folder',
+    folderHelp: 'Choose Downloads once. PraiseLyrics will save the complete library there automatically.',
+    tvWall: 'TV Wall',
+    chooseDisplay: 'Choose after Detect Displays',
+    displayHelp: 'If Windows sees all TVs as one wall, it should appear here as one display.',
+    serviceControl: 'Service Control',
+    previous: 'Previous',
+    next: 'Next',
+    addVerse: 'Add Verse',
+    send: 'Send',
+    edit: 'Edit',
+    copy: 'Copy',
+    delete: 'Delete',
+    addFirstVerse: 'Add the first verse',
+    keyboard: 'Keyboard: ← Previous · → Next · Space Blank/Show · 1–9 jump directly to a slide',
+    appearance: 'Wall Appearance',
+    backgroundFor: 'Background for',
+    selectedVerse: 'Selected Verse',
+    textColor: 'Text color',
+    fontSize: 'Font size',
+    overlay: 'Overlay',
+    width: 'Width',
+    font: 'Font',
+    alignment: 'Alignment',
+    left: 'Left',
+    center: 'Center',
+    right: 'Right',
+    textShadow: 'Strong text shadow for readability',
+    imageUrl: 'Background image URL',
+    imagePlaceholder: 'Paste a direct image URL',
+    useSelected: 'Use on Selected Verse',
+    uploadImage: 'Upload Image for Selected Verse',
+    clearImage: 'Clear Verse Image',
+    freeBackgrounds: 'Free Background Sources',
+    findImages: 'Find Worship Images',
+    backgroundHelp: 'Select a verse first. Then choose a color or image. Everything is saved in the library file on this computer.',
+    howWorks: 'How it works:',
+    howWorksText: 'click a verse card, then click a color or upload an image. Only that selected verse changes.',
+    editSlide: 'Edit Slide',
+    label: 'Label',
+    lyrics: 'Lyrics',
+    cancel: 'Cancel',
+    saveSlide: 'Save Slide',
+    renameTitle: 'Rename Lyrics',
+    lyricsName: 'Lyrics name',
+    save: 'Save',
+    untitled: 'Untitled Lyrics',
+    newTitle: 'New Lyrics',
+    typeHere: 'Type lyrics here',
+    folderReady: 'Lyrics are saving automatically to PraiseLyrics-Library.json.',
+    folderNeeded: 'Choose your Downloads folder to turn on automatic file saving.',
+    saveError: 'Could not save the Lyrics library. Choose the folder again.',
+    saved: 'Saved',
+    saving: 'Saving…',
+    loadError: 'The Lyrics library file could not be read.',
+    browserNoFolder: 'Automatic file saving needs Chrome or Edge. Use one of those browsers for the church computer.',
+    wallNotOpen: 'Wall is not open yet.',
+    screenUnsupported: 'This browser cannot list screens. Open the wall and move it manually.',
+    screenDetected: (n) => `Detected ${n} display${n === 1 ? '' : 's'}. Select the TV wall, then click Open Wall.`,
+    screenDenied: 'Screen permission was not granted.',
+    wallBlocked: 'The browser blocked the wall window. Allow popups and try again.',
+    wallOpened: 'Wall opened.',
+    imageTooLarge: 'That image is larger than 12 MB. Please use a smaller image.',
+    installTitle: 'Would you like to add PraiseLyrics to your desktop?',
+    installPt: 'Gostaria de adicionar o PraiseLyrics à sua área de trabalho?',
+    installButton: 'Add to Desktop / Adicionar à Área de Trabalho',
+    notNow: 'Not Now / Agora Não',
+    installFallback: 'In Chrome or Edge, open the browser menu and choose Install PraiseLyrics or Create shortcut.',
+  },
+  pt: {
+    appTitle: 'Controle de Letras da Igreja',
+    appSubtitle: 'Controle tudo aqui. O telão recebe somente as letras ao vivo.',
+    detect: 'Detectar Telas',
+    openWall: 'Abrir Telão',
+    showLyrics: 'Mostrar Letras',
+    blankWall: 'Apagar Telão',
+    wallBlank: 'TELÃO APAGADO',
+    live: 'AO VIVO',
+    library: 'Biblioteca de Letras',
+    lyricsCount: (n) => `${n} ${n === 1 ? 'Letra' : 'Letras'}`,
+    newLyrics: 'Nova Letra',
+    renameLyrics: 'Renomear Letra',
+    deleteLyrics: 'Excluir Letra',
+    chooseFolder: 'Escolher Pasta das Letras',
+    folderHelp: 'Escolha Downloads uma vez. O PraiseLyrics salvará toda a biblioteca automaticamente lá.',
+    tvWall: 'Telão',
+    chooseDisplay: 'Escolha após Detectar Telas',
+    displayHelp: 'Se o Windows enxergar todas as TVs como um único telão, ele aparecerá aqui como uma tela.',
+    serviceControl: 'Controle do Culto',
+    previous: 'Anterior',
+    next: 'Próxima',
+    addVerse: 'Adicionar Verso',
+    send: 'Enviar',
+    edit: 'Editar',
+    copy: 'Copiar',
+    delete: 'Excluir',
+    addFirstVerse: 'Adicionar o primeiro verso',
+    keyboard: 'Teclado: ← Anterior · → Próxima · Espaço Apagar/Mostrar · 1–9 ir direto para uma tela',
+    appearance: 'Aparência do Telão',
+    backgroundFor: 'Fundo para',
+    selectedVerse: 'Verso Selecionado',
+    textColor: 'Cor do texto',
+    fontSize: 'Tamanho da fonte',
+    overlay: 'Escurecimento',
+    width: 'Largura',
+    font: 'Fonte',
+    alignment: 'Alinhamento',
+    left: 'Esquerda',
+    center: 'Centro',
+    right: 'Direita',
+    textShadow: 'Sombra forte no texto para facilitar a leitura',
+    imageUrl: 'URL da imagem de fundo',
+    imagePlaceholder: 'Cole uma URL direta da imagem',
+    useSelected: 'Usar no Verso Selecionado',
+    uploadImage: 'Enviar Imagem para o Verso',
+    clearImage: 'Remover Imagem do Verso',
+    freeBackgrounds: 'Fontes de Fundos Gratuitos',
+    findImages: 'Encontrar Imagens de Adoração',
+    backgroundHelp: 'Selecione um verso primeiro. Depois escolha uma cor ou imagem. Tudo fica salvo no arquivo da biblioteca neste computador.',
+    howWorks: 'Como funciona:',
+    howWorksText: 'clique em um verso e depois escolha uma cor ou envie uma imagem. Apenas o verso selecionado será alterado.',
+    editSlide: 'Editar Tela',
+    label: 'Rótulo',
+    lyrics: 'Letra',
+    cancel: 'Cancelar',
+    saveSlide: 'Salvar Tela',
+    renameTitle: 'Renomear Letra',
+    lyricsName: 'Nome da letra',
+    save: 'Salvar',
+    untitled: 'Letra Sem Nome',
+    newTitle: 'Nova Letra',
+    typeHere: 'Digite a letra aqui',
+    folderReady: 'As letras estão sendo salvas automaticamente em PraiseLyrics-Library.json.',
+    folderNeeded: 'Escolha sua pasta Downloads para ativar o salvamento automático.',
+    saveError: 'Não foi possível salvar a biblioteca. Escolha a pasta novamente.',
+    saved: 'Salvo',
+    saving: 'Salvando…',
+    loadError: 'Não foi possível ler o arquivo da biblioteca.',
+    browserNoFolder: 'O salvamento automático precisa do Chrome ou Edge no computador da igreja.',
+    wallNotOpen: 'O telão ainda não foi aberto.',
+    screenUnsupported: 'Este navegador não consegue listar as telas. Abra o telão e mova manualmente.',
+    screenDetected: (n) => `${n} tela${n === 1 ? '' : 's'} detectada${n === 1 ? '' : 's'}. Selecione o telão e clique em Abrir Telão.`,
+    screenDenied: 'A permissão para detectar telas não foi concedida.',
+    wallBlocked: 'O navegador bloqueou a janela do telão. Permita pop-ups e tente novamente.',
+    wallOpened: 'Telão aberto.',
+    imageTooLarge: 'A imagem tem mais de 12 MB. Use uma imagem menor.',
+    installTitle: 'Would you like to add PraiseLyrics to your desktop?',
+    installPt: 'Gostaria de adicionar o PraiseLyrics à sua área de trabalho?',
+    installButton: 'Add to Desktop / Adicionar à Área de Trabalho',
+    notNow: 'Not Now / Agora Não',
+    installFallback: 'No Chrome ou Edge, abra o menu do navegador e escolha Instalar PraiseLyrics ou Criar atalho.',
+  },
+};
+
+function openHandleDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(HANDLE_DB, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(HANDLE_STORE)) request.result.createObjectStore(HANDLE_STORE);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getStoredDirectoryHandle() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
+    const db = await openHandleDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(HANDLE_STORE, 'readonly');
+      const request = tx.objectStore(HANDLE_STORE).get(HANDLE_KEY);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
   } catch {
     return null;
   }
 }
 
-function getSlideStyle(song, slideIndex, style) {
-  const slide = song?.slides?.[slideIndex];
+async function storeDirectoryHandle(handle) {
+  const db = await openHandleDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(HANDLE_STORE, 'readwrite');
+    tx.objectStore(HANDLE_STORE).put(handle, HANDLE_KEY);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function readLibrary(handle) {
+  const fileHandle = await handle.getFileHandle(LIBRARY_FILE, { create: true });
+  const file = await fileHandle.getFile();
+  if (!file.size) return null;
+  const text = await file.text();
+  return JSON.parse(text);
+}
+
+async function writeLibrary(handle, data) {
+  const fileHandle = await handle.getFileHandle(LIBRARY_FILE, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(JSON.stringify(data, null, 2));
+  await writable.close();
+}
+
+function getSlideStyle(lyrics, slideIndex, style) {
+  const slide = lyrics?.slides?.[slideIndex];
   if (!slide) return style;
   return {
     ...style,
@@ -80,13 +292,13 @@ function getSlideStyle(song, slideIndex, style) {
   };
 }
 
-function buildLivePayload(song, slideIndex, style, blank) {
+function buildLivePayload(lyrics, slideIndex, style, blank) {
   return {
     type: 'LIVE_UPDATE',
     at: Date.now(),
-    songTitle: song?.title || '',
-    slide: !blank && song?.slides?.[slideIndex] ? song.slides[slideIndex] : null,
-    style: getSlideStyle(song, slideIndex, style),
+    lyricsTitle: lyrics?.title || '',
+    slide: !blank && lyrics?.slides?.[slideIndex] ? lyrics.slides[slideIndex] : null,
+    style: getSlideStyle(lyrics, slideIndex, style),
     blank,
   };
 }
@@ -102,29 +314,9 @@ function BroadcastBridge({ onMessage }) {
 }
 
 function DisplayView() {
-  const [live, setLive] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(`${STORAGE_KEY}:live`)) || buildLivePayload(null, 0, DEFAULT_STYLE, true);
-    } catch {
-      return buildLivePayload(null, 0, DEFAULT_STYLE, true);
-    }
-  });
-
-  const receive = React.useCallback((payload) => {
+  const [live, setLive] = useState(() => buildLivePayload(null, 0, DEFAULT_STYLE, true));
+  const receive = useCallback((payload) => {
     if (payload?.type === 'LIVE_UPDATE') setLive(payload);
-  }, []);
-
-  useEffect(() => {
-    const storageHandler = (event) => {
-      if (event.key !== `${STORAGE_KEY}:live` || !event.newValue) return;
-      try {
-        setLive(JSON.parse(event.newValue));
-      } catch {
-        // Ignore malformed storage events.
-      }
-    };
-    window.addEventListener('storage', storageHandler);
-    return () => window.removeEventListener('storage', storageHandler);
   }, []);
 
   useEffect(() => {
@@ -165,70 +357,134 @@ function DisplayView() {
           {live.slide.text}
         </div>
       )}
-      <div className="display-click-hint">Click once if the browser asks to enter full screen</div>
     </main>
   );
 }
 
 function ControlView() {
-  const saved = useMemo(() => loadSavedState(), []);
-  const [songs, setSongs] = useState(saved?.songs?.length ? saved.songs : [DEFAULT_SONG]);
-  const [songId, setSongId] = useState(saved?.songId || (saved?.songs?.[0]?.id ?? DEFAULT_SONG.id));
-  const [liveIndex, setLiveIndex] = useState(saved?.liveIndex ?? 0);
-  const [selectedIndex, setSelectedIndex] = useState(saved?.selectedIndex ?? 0);
-  const [style, setStyle] = useState({ ...DEFAULT_STYLE, ...(saved?.style || {}) });
-  const [blank, setBlank] = useState(saved?.blank ?? true);
-  const [showSongEditor, setShowSongEditor] = useState(false);
+  const [language, setLanguage] = useState('en');
+  const t = COPY[language];
+  const [lyricsList, setLyricsList] = useState([DEFAULT_LYRICS]);
+  const [lyricsId, setLyricsId] = useState(DEFAULT_LYRICS.id);
+  const [liveIndex, setLiveIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [style, setStyle] = useState(DEFAULT_STYLE);
+  const [blank, setBlank] = useState(true);
   const [editingSlide, setEditingSlide] = useState(null);
+  const [showLyricsEditor, setShowLyricsEditor] = useState(false);
   const [screenOptions, setScreenOptions] = useState([]);
-  const [selectedScreenId, setSelectedScreenId] = useState(saved?.selectedScreenId || '');
-  const [status, setStatus] = useState('Wall is not open yet.');
+  const [selectedScreenId, setSelectedScreenId] = useState('');
+  const [status, setStatus] = useState(t.wallNotOpen);
+  const [saveStatus, setSaveStatus] = useState(t.folderNeeded);
+  const [directoryHandle, setDirectoryHandle] = useState(null);
+  const [folderReady, setFolderReady] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstall, setShowInstall] = useState(false);
+  const [installMessage, setInstallMessage] = useState('');
   const wallRef = useRef(null);
+  const loadedRef = useRef(false);
 
-  const song = songs.find((item) => item.id === songId) || songs[0];
-  const selectedSlide = song?.slides?.[selectedIndex];
+  const lyrics = lyricsList.find((item) => item.id === lyricsId) || lyricsList[0];
+  const selectedSlide = lyrics?.slides?.[selectedIndex];
 
   useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ songs, songId: song?.id, liveIndex, selectedIndex, style, blank, selectedScreenId })
-    );
-  }, [songs, songId, liveIndex, selectedIndex, style, blank, selectedScreenId, song?.id]);
+    const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone;
+    if (!standalone) setShowInstall(true);
+    const handler = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const handle = await getStoredDirectoryHandle();
+      if (!handle || cancelled) {
+        loadedRef.current = true;
+        return;
+      }
+      try {
+        const permission = await handle.queryPermission?.({ mode: 'readwrite' });
+        if (permission !== 'granted') {
+          loadedRef.current = true;
+          return;
+        }
+        const saved = await readLibrary(handle);
+        if (cancelled) return;
+        setDirectoryHandle(handle);
+        setFolderReady(true);
+        if (saved?.lyrics?.length) {
+          setLyricsList(saved.lyrics);
+          setLyricsId(saved.activeLyricsId || saved.lyrics[0].id);
+          setStyle({ ...DEFAULT_STYLE, ...(saved.style || {}) });
+        }
+        setSaveStatus(COPY[language].folderReady);
+      } catch {
+        setSaveStatus(COPY[language].loadError);
+      } finally {
+        loadedRef.current = true;
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!folderReady || !directoryHandle || !loadedRef.current) return undefined;
+    setSaveStatus(t.saving);
+    const timer = setTimeout(async () => {
+      try {
+        await writeLibrary(directoryHandle, {
+          version: 2,
+          savedAt: new Date().toISOString(),
+          activeLyricsId: lyrics?.id || lyricsList[0]?.id || '',
+          lyrics: lyricsList,
+          style,
+        });
+        setSaveStatus(`${t.saved} ✓`);
+      } catch {
+        setFolderReady(false);
+        setSaveStatus(t.saveError);
+      }
+    }, 650);
+    return () => clearTimeout(timer);
+  }, [lyricsList, lyrics?.id, style, directoryHandle, folderReady, t.saved, t.saving, t.saveError]);
 
   useEffect(() => {
     setImageUrl(selectedSlide?.backgroundImage || '');
   }, [selectedSlide?.id, selectedSlide?.backgroundImage]);
 
-  const sendLive = React.useCallback(
-    (nextIndex = liveIndex, nextBlank = blank, nextStyle = style) => {
-      if (!song) return;
-      const payload = buildLivePayload(song, nextIndex, nextStyle, nextBlank);
-      localStorage.setItem(`${STORAGE_KEY}:live`, JSON.stringify(payload));
-      if ('BroadcastChannel' in window) {
-        const channel = new BroadcastChannel(CHANNEL_NAME);
-        channel.postMessage(payload);
-        channel.close();
-      }
-    },
-    [song, liveIndex, blank, style]
-  );
+  useEffect(() => {
+    setStatus((current) => current === COPY.en.wallNotOpen || current === COPY.pt.wallNotOpen ? t.wallNotOpen : current);
+    if (!folderReady) setSaveStatus(t.folderNeeded);
+    else setSaveStatus(t.folderReady);
+  }, [language]);
+
+  const sendLive = useCallback((nextIndex = liveIndex, nextBlank = blank, nextStyle = style) => {
+    if (!lyrics || !('BroadcastChannel' in window)) return;
+    const payload = buildLivePayload(lyrics, nextIndex, nextStyle, nextBlank);
+    const channel = new BroadcastChannel(CHANNEL_NAME);
+    channel.postMessage(payload);
+    channel.close();
+  }, [lyrics, liveIndex, blank, style]);
 
   useEffect(() => {
     sendLive(liveIndex, blank, style);
   }, [style, sendLive, liveIndex, blank]);
 
   useEffect(() => {
-    if (song && liveIndex >= song.slides.length) {
-      setLiveIndex(Math.max(0, song.slides.length - 1));
-      setSelectedIndex(Math.max(0, song.slides.length - 1));
+    if (lyrics && liveIndex >= lyrics.slides.length) {
+      setLiveIndex(Math.max(0, lyrics.slides.length - 1));
+      setSelectedIndex(Math.max(0, lyrics.slides.length - 1));
     }
-  }, [song, liveIndex]);
+  }, [lyrics, liveIndex]);
 
   useEffect(() => {
     const keyHandler = (event) => {
-      const target = event.target;
-      if (target?.matches?.('input, textarea, select')) return;
+      if (event.target?.matches?.('input, textarea, select')) return;
       if (event.key === 'ArrowRight') {
         event.preventDefault();
         goNext();
@@ -240,35 +496,73 @@ function ControlView() {
         toggleBlank();
       } else if (/^[1-9]$/.test(event.key)) {
         const index = Number(event.key) - 1;
-        if (song?.slides?.[index]) makeLive(index);
+        if (lyrics?.slides?.[index]) makeLive(index);
       }
     };
     window.addEventListener('keydown', keyHandler);
     return () => window.removeEventListener('keydown', keyHandler);
   });
 
-  function updateSong(mutator) {
-    setSongs((current) => current.map((item) => (item.id === song.id ? mutator(item) : item)));
+  async function chooseLyricsFolder() {
+    if (!window.showDirectoryPicker) {
+      setSaveStatus(t.browserNoFolder);
+      return;
+    }
+    try {
+      const handle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'downloads' });
+      await storeDirectoryHandle(handle);
+      const existing = await readLibrary(handle);
+      if (existing?.lyrics?.length) {
+        setLyricsList(existing.lyrics);
+        setLyricsId(existing.activeLyricsId || existing.lyrics[0].id);
+        setStyle({ ...DEFAULT_STYLE, ...(existing.style || {}) });
+      } else {
+        await writeLibrary(handle, {
+          version: 2,
+          savedAt: new Date().toISOString(),
+          activeLyricsId: lyrics?.id || lyricsList[0]?.id || '',
+          lyrics: lyricsList,
+          style,
+        });
+      }
+      setDirectoryHandle(handle);
+      setFolderReady(true);
+      setSaveStatus(t.folderReady);
+    } catch (error) {
+      if (error?.name !== 'AbortError') setSaveStatus(t.saveError);
+    }
+  }
+
+  async function installDesktop() {
+    if (!installPrompt) {
+      setInstallMessage(t.installFallback);
+      return;
+    }
+    await installPrompt.prompt();
+    const result = await installPrompt.userChoice;
+    if (result?.outcome === 'accepted') setShowInstall(false);
+    setInstallPrompt(null);
+  }
+
+  function updateLyrics(mutator) {
+    setLyricsList((current) => current.map((item) => (item.id === lyrics.id ? mutator(item) : item)));
   }
 
   function updateSelectedSlide(changes) {
     if (!selectedSlide) return;
-    updateSong((current) => ({
+    updateLyrics((current) => ({
       ...current,
-      slides: current.slides.map((slide, index) =>
-        index === selectedIndex ? { ...slide, ...changes } : slide
-      ),
+      slides: current.slides.map((slide, index) => index === selectedIndex ? { ...slide, ...changes } : slide),
     }));
   }
 
   function applyVerseBackground(background) {
     updateSelectedSlide({ background, backgroundImage: '' });
     setImageUrl('');
-    setStatus(`${selectedSlide?.label || 'Selected verse'} background updated.`);
   }
 
   function makeLive(index) {
-    if (!song?.slides?.[index]) return;
+    if (!lyrics?.slides?.[index]) return;
     setSelectedIndex(index);
     setLiveIndex(index);
     setBlank(false);
@@ -276,12 +570,12 @@ function ControlView() {
   }
 
   function goNext() {
-    if (!song?.slides?.length) return;
-    makeLive(Math.min(song.slides.length - 1, liveIndex + 1));
+    if (!lyrics?.slides?.length) return;
+    makeLive(Math.min(lyrics.slides.length - 1, liveIndex + 1));
   }
 
   function goPrevious() {
-    if (!song?.slides?.length) return;
+    if (!lyrics?.slides?.length) return;
     makeLive(Math.max(0, liveIndex - 1));
   }
 
@@ -293,7 +587,7 @@ function ControlView() {
 
   async function detectScreens() {
     if (!window.getScreenDetails) {
-      setStatus('This browser cannot list screens. Use Chrome/Edge and click Open Wall; you can move it to the TV wall manually.');
+      setStatus(t.screenUnsupported);
       return;
     }
     try {
@@ -311,9 +605,9 @@ function ControlView() {
         const nonPrimary = details.screens.find((item) => !item.isPrimary) || details.screens[0];
         setSelectedScreenId(`${nonPrimary.left}:${nonPrimary.top}:${nonPrimary.width}:${nonPrimary.height}`);
       }
-      setStatus(`Detected ${mapped.length} display${mapped.length === 1 ? '' : 's'}. Select the TV wall, then click Open Wall.`);
-    } catch (error) {
-      setStatus(`Screen permission was not granted: ${error?.message || 'unknown error'}`);
+      setStatus(t.screenDetected(mapped.length));
+    } catch {
+      setStatus(t.screenDenied);
     }
   }
 
@@ -325,7 +619,7 @@ function ControlView() {
     const displayUrl = `${window.location.origin}${import.meta.env.BASE_URL}?display=1`;
     wallRef.current = window.open(displayUrl, 'PraiseLyricsWall', features);
     if (!wallRef.current) {
-      setStatus('The browser blocked the wall window. Allow popups for this site and try again.');
+      setStatus(t.wallBlocked);
       return;
     }
     try {
@@ -335,24 +629,24 @@ function ControlView() {
         wallRef.current.resizeTo(selected.width, selected.height);
       }
     } catch {
-      // Browsers may block moving windows until permission is granted.
+      // Browser may block moving windows until display permission is granted.
     }
-    setStatus(selected ? `Wall opened on ${selected.label}.` : 'Wall opened. Move it to the TV wall if needed.');
+    setStatus(t.wallOpened);
     setTimeout(() => sendLive(liveIndex, blank, style), 500);
   }
 
   function addSlide() {
-    const slide = { id: crypto.randomUUID(), label: `Verse ${song.slides.length + 1}`, text: 'Type lyrics here' };
-    updateSong((current) => ({ ...current, slides: [...current.slides, slide] }));
+    const slide = { id: crypto.randomUUID(), label: `Verse ${lyrics.slides.length + 1}`, text: t.typeHere };
+    updateLyrics((current) => ({ ...current, slides: [...current.slides, slide] }));
     setEditingSlide(slide.id);
-    setSelectedIndex(song.slides.length);
+    setSelectedIndex(lyrics.slides.length);
   }
 
   function duplicateSlide(index) {
-    const original = song.slides[index];
+    const original = lyrics.slides[index];
     if (!original) return;
     const copy = { ...original, id: crypto.randomUUID(), label: `${original.label} Copy` };
-    updateSong((current) => {
+    updateLyrics((current) => {
       const slides = [...current.slides];
       slides.splice(index + 1, 0, copy);
       return { ...current, slides };
@@ -360,16 +654,16 @@ function ControlView() {
   }
 
   function deleteSlide(index) {
-    if (!song.slides[index]) return;
-    updateSong((current) => ({ ...current, slides: current.slides.filter((_, i) => i !== index) }));
+    if (!lyrics.slides[index]) return;
+    updateLyrics((current) => ({ ...current, slides: current.slides.filter((_, i) => i !== index) }));
     setSelectedIndex(Math.max(0, index - 1));
-    setLiveIndex((current) => Math.max(0, Math.min(current, song.slides.length - 2)));
+    setLiveIndex((current) => Math.max(0, Math.min(current, lyrics.slides.length - 2)));
   }
 
   function moveSlide(index, direction) {
     const target = index + direction;
-    if (target < 0 || target >= song.slides.length) return;
-    updateSong((current) => {
+    if (target < 0 || target >= lyrics.slides.length) return;
+    updateLyrics((current) => {
       const slides = [...current.slides];
       [slides[index], slides[target]] = [slides[target], slides[index]];
       return { ...current, slides };
@@ -380,44 +674,42 @@ function ControlView() {
   }
 
   function saveSlide(id, next) {
-    updateSong((current) => ({
+    updateLyrics((current) => ({
       ...current,
-      slides: current.slides.map((slide) => (slide.id === id ? { ...slide, ...next } : slide)),
+      slides: current.slides.map((slide) => slide.id === id ? { ...slide, ...next } : slide),
     }));
     setEditingSlide(null);
   }
 
-  function newSong() {
-    const next = { id: crypto.randomUUID(), title: 'New Song', slides: [] };
-    setSongs((current) => [...current, next]);
-    setSongId(next.id);
+  function newLyrics() {
+    const next = { id: crypto.randomUUID(), title: t.newTitle, slides: [] };
+    setLyricsList((current) => [...current, next]);
+    setLyricsId(next.id);
     setSelectedIndex(0);
     setLiveIndex(0);
     setBlank(true);
-    setShowSongEditor(true);
+    setShowLyricsEditor(true);
   }
 
-  function deleteSong() {
-    if (songs.length === 1) return;
-    const nextSongs = songs.filter((item) => item.id !== song.id);
-    setSongs(nextSongs);
-    setSongId(nextSongs[0].id);
+  function deleteLyrics() {
+    if (lyricsList.length === 1) return;
+    const nextList = lyricsList.filter((item) => item.id !== lyrics.id);
+    setLyricsList(nextList);
+    setLyricsId(nextList[0].id);
     setLiveIndex(0);
     setSelectedIndex(0);
     setBlank(true);
   }
 
   function applyImageUrl() {
-    const next = imageUrl.trim();
-    updateSelectedSlide({ backgroundImage: next });
-    setStatus(`${selectedSlide?.label || 'Selected verse'} image background updated.`);
+    updateSelectedSlide({ backgroundImage: imageUrl.trim() });
   }
 
   function handleImageUpload(event) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (file.size > 4 * 1024 * 1024) {
-      setStatus('That image is larger than 4 MB. Please use a smaller image so browser storage stays reliable.');
+    if (file.size > 12 * 1024 * 1024) {
+      setStatus(t.imageTooLarge);
       return;
     }
     const reader = new FileReader();
@@ -425,7 +717,6 @@ function ControlView() {
       const dataUrl = String(reader.result || '');
       setImageUrl(dataUrl);
       updateSelectedSlide({ backgroundImage: dataUrl });
-      setStatus(`${selectedSlide?.label || 'Selected verse'} image background updated.`);
     };
     reader.readAsDataURL(file);
   }
@@ -435,19 +726,28 @@ function ControlView() {
       <header className="topbar">
         <div>
           <div className="eyebrow">PraiseLyrics</div>
-          <h1>Church Lyrics Control</h1>
-          <p>Control everything here. The 3×3 TV wall only receives the live lyrics.</p>
+          <h1>{t.appTitle}</h1>
+          <p>{t.appSubtitle}</p>
         </div>
         <div className="topbar-actions">
-          <button className="secondary" onClick={detectScreens}>Detect Displays</button>
-          <button className="primary" onClick={openWall}>Open Wall</button>
-          <button className={blank ? 'danger active' : 'danger'} onClick={toggleBlank}>{blank ? 'Show Lyrics' : 'Blank Wall'}</button>
+          <div className="language-switch" aria-label="Language">
+            <button className={language === 'en' ? 'flag-button active' : 'flag-button'} onClick={() => setLanguage('en')} title="English">🇺🇸</button>
+            <button className={language === 'pt' ? 'flag-button active' : 'flag-button'} onClick={() => setLanguage('pt')} title="Português">🇧🇷</button>
+          </div>
+          <button className="secondary" onClick={detectScreens}>{t.detect}</button>
+          <button className="primary" onClick={openWall}>{t.openWall}</button>
+          <button className={blank ? 'danger active' : 'danger'} onClick={toggleBlank}>{blank ? t.showLyrics : t.blankWall}</button>
         </div>
       </header>
 
+      <div className="savebar">
+        <button className="secondary compact" onClick={chooseLyricsFolder}>📁 {t.chooseFolder}</button>
+        <span className={folderReady ? 'save-state ready' : 'save-state'}>{saveStatus}</span>
+      </div>
+
       <div className="statusbar">
         <span className={blank ? 'dot muted' : 'dot live'} />
-        <strong>{blank ? 'WALL BLANK' : `LIVE: ${song?.slides?.[liveIndex]?.label || 'No slide'}`}</strong>
+        <strong>{blank ? t.wallBlank : `${t.live}: ${lyrics?.slides?.[liveIndex]?.label || '—'}`}</strong>
         <span>{status}</span>
       </div>
 
@@ -455,42 +755,52 @@ function ControlView() {
         <aside className="sidebar panel">
           <div className="section-head">
             <div>
-              <span className="section-label">Song Library</span>
-              <h2>{songs.length} song{songs.length === 1 ? '' : 's'}</h2>
+              <span className="section-label">{t.library}</span>
+              <h2>{t.lyricsCount(lyricsList.length)}</h2>
             </div>
-            <button className="icon-button" onClick={newSong} title="New song">＋</button>
+            <button className="icon-button" onClick={newLyrics} title={t.newLyrics}>＋</button>
           </div>
 
           <div className="song-list">
-            {songs.map((item) => (
-              <button
-                key={item.id}
-                className={`song-item ${item.id === song.id ? 'selected' : ''}`}
-                onClick={() => {
-                  setSongId(item.id);
-                  setLiveIndex(0);
-                  setSelectedIndex(0);
-                  setBlank(true);
-                }}
-              >
-                <strong>{item.title}</strong>
-                <span>{item.slides.length} slide{item.slides.length === 1 ? '' : 's'}</span>
-              </button>
+            {lyricsList.map((item) => (
+              <div key={item.id} className={`song-item lyrics-item ${item.id === lyrics.id ? 'selected' : ''}`}>
+                <button
+                  className="lyrics-name-button"
+                  title={t.renameLyrics}
+                  onClick={() => {
+                    setLyricsId(item.id);
+                    setShowLyricsEditor(true);
+                  }}
+                >
+                  <strong>{item.title}</strong><span className="rename-mark">✎</span>
+                </button>
+                <button
+                  className="lyrics-open-button"
+                  onClick={() => {
+                    setLyricsId(item.id);
+                    setLiveIndex(0);
+                    setSelectedIndex(0);
+                    setBlank(true);
+                  }}
+                >
+                  {item.slides.length} {language === 'pt' ? (item.slides.length === 1 ? 'tela' : 'telas') : (item.slides.length === 1 ? 'slide' : 'slides')}
+                </button>
+              </div>
             ))}
           </div>
 
           <div className="sidebar-actions">
-            <button className="secondary full" onClick={() => setShowSongEditor(true)}>Rename Song</button>
-            <button className="ghost full" disabled={songs.length === 1} onClick={deleteSong}>Delete Song</button>
+            <button className="secondary full" onClick={() => setShowLyricsEditor(true)}>{t.renameLyrics}</button>
+            <button className="ghost full" disabled={lyricsList.length === 1} onClick={deleteLyrics}>{t.deleteLyrics}</button>
           </div>
 
           <div className="screen-box">
-            <span className="section-label">TV Wall</span>
+            <span className="section-label">{t.tvWall}</span>
             <select value={selectedScreenId} onChange={(event) => setSelectedScreenId(event.target.value)}>
-              <option value="">Choose after Detect Displays</option>
+              <option value="">{t.chooseDisplay}</option>
               {screenOptions.map((screen) => <option key={screen.id} value={screen.id}>{screen.label}</option>)}
             </select>
-            <small>If Windows sees all 9 TVs as one wall, it should appear here as one display.</small>
+            <small>{t.displayHelp}</small>
           </div>
         </aside>
 
@@ -498,109 +808,93 @@ function ControlView() {
           <div className="panel verses-panel">
             <div className="section-head wide">
               <div>
-                <span className="section-label">Service Control</span>
-                <h2>{song?.title}</h2>
+                <span className="section-label">{t.serviceControl}</span>
+                <button className="editable-title" onClick={() => setShowLyricsEditor(true)} title={t.renameLyrics}>{lyrics?.title} <span>✎</span></button>
               </div>
               <div className="mini-actions">
-                <button className="secondary" onClick={goPrevious}>← Previous</button>
-                <button className="secondary" onClick={goNext}>Next →</button>
-                <button className="primary" onClick={addSlide}>＋ Add Verse</button>
+                <button className="secondary" onClick={goPrevious}>← {t.previous}</button>
+                <button className="secondary" onClick={goNext}>{t.next} →</button>
+                <button className="primary" onClick={addSlide}>＋ {t.addVerse}</button>
               </div>
             </div>
 
             <div className="verse-strip">
-              {song?.slides?.map((slide, index) => {
+              {lyrics?.slides?.map((slide, index) => {
                 const cardBackground = slide.backgroundImage
                   ? `linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.45)), url("${slide.backgroundImage}")`
                   : slide.background;
                 return (
-                <article
-                  key={slide.id}
-                  className={`verse-card ${index === liveIndex && !blank ? 'live-card' : ''} ${index === selectedIndex ? 'selected-card' : ''}`}
-                  style={cardBackground ? { background: cardBackground, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-                  onClick={() => setSelectedIndex(index)}
-                  onDoubleClick={() => setEditingSlide(slide.id)}
-                >
-                  <div className="verse-card-head">
-                    <span>{slide.label}</span>
-                    {index === liveIndex && !blank && <strong>LIVE</strong>}
-                  </div>
-                  <p>{slide.text}</p>
-                  <div className="verse-card-actions">
-                    <button onClick={(event) => { event.stopPropagation(); makeLive(index); }}>Send</button>
-                    <button onClick={(event) => { event.stopPropagation(); setEditingSlide(slide.id); }}>Edit</button>
-                    <button onClick={(event) => { event.stopPropagation(); duplicateSlide(index); }}>Copy</button>
-                    <button onClick={(event) => { event.stopPropagation(); moveSlide(index, -1); }}>←</button>
-                    <button onClick={(event) => { event.stopPropagation(); moveSlide(index, 1); }}>→</button>
-                    <button className="delete" onClick={(event) => { event.stopPropagation(); deleteSlide(index); }}>Delete</button>
-                  </div>
-                </article>
-              )})}
-
-              {!song?.slides?.length && (
-                <button className="empty-card" onClick={addSlide}>＋ Add the first verse</button>
-              )}
+                  <article
+                    key={slide.id}
+                    className={`verse-card ${index === liveIndex && !blank ? 'live-card' : ''} ${index === selectedIndex ? 'selected-card' : ''}`}
+                    style={cardBackground ? { background: cardBackground, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                    onClick={() => setSelectedIndex(index)}
+                    onDoubleClick={() => setEditingSlide(slide.id)}
+                  >
+                    <div className="verse-card-head">
+                      <span>{slide.label}</span>
+                      {index === liveIndex && !blank && <strong>{t.live}</strong>}
+                    </div>
+                    <p>{slide.text}</p>
+                    <div className="verse-card-actions">
+                      <button onClick={(event) => { event.stopPropagation(); makeLive(index); }}>{t.send}</button>
+                      <button onClick={(event) => { event.stopPropagation(); setEditingSlide(slide.id); }}>{t.edit}</button>
+                      <button onClick={(event) => { event.stopPropagation(); duplicateSlide(index); }}>{t.copy}</button>
+                      <button onClick={(event) => { event.stopPropagation(); moveSlide(index, -1); }}>←</button>
+                      <button onClick={(event) => { event.stopPropagation(); moveSlide(index, 1); }}>→</button>
+                      <button className="delete" onClick={(event) => { event.stopPropagation(); deleteSlide(index); }}>{t.delete}</button>
+                    </div>
+                  </article>
+                );
+              })}
+              {!lyrics?.slides?.length && <button className="empty-card" onClick={addSlide}>＋ {t.addFirstVerse}</button>}
             </div>
-
-            <div className="keyboard-help">Keyboard: ← Previous · → Next · Space Blank/Show · 1–9 jump directly to a slide</div>
+            <div className="keyboard-help">{t.keyboard}</div>
           </div>
 
           <div className="lower-grid">
             <div className="panel appearance-panel">
               <div className="section-head">
                 <div>
-                  <span className="section-label">Wall Appearance</span>
-                  <h2>Background for {selectedSlide?.label || 'Selected Verse'}</h2>
+                  <span className="section-label">{t.appearance}</span>
+                  <h2>{t.backgroundFor} {selectedSlide?.label || t.selectedVerse}</h2>
                 </div>
               </div>
 
               <div className="gradient-grid">
                 {DEFAULT_GRADIENTS.map((preset) => (
-                  <button
-                    key={preset.name}
-                    title={`Apply ${preset.name} to ${selectedSlide?.label || 'selected verse'}`}
-                    className="gradient-swatch"
-                    style={{ background: preset.value }}
-                    onClick={() => applyVerseBackground(preset.value)}
-                  >
+                  <button key={preset.name} className="gradient-swatch" style={{ background: preset.value }} onClick={() => applyVerseBackground(preset.value)}>
                     <span>{preset.name}</span>
                   </button>
                 ))}
               </div>
 
               <div className="control-grid">
-                <label>Text color<input type="color" value={style.textColor} onChange={(event) => setStyle((current) => ({ ...current, textColor: event.target.value }))} /></label>
-                <label>Font size<input type="range" min="38" max="140" value={style.fontSize} onChange={(event) => setStyle((current) => ({ ...current, fontSize: Number(event.target.value) }))} /><span>{style.fontSize}px</span></label>
-                <label>Overlay<input type="range" min="0" max="0.85" step="0.05" value={style.overlay} onChange={(event) => setStyle((current) => ({ ...current, overlay: Number(event.target.value) }))} /><span>{Math.round(style.overlay * 100)}%</span></label>
-                <label>Width<input type="range" min="50" max="96" value={style.maxWidth} onChange={(event) => setStyle((current) => ({ ...current, maxWidth: Number(event.target.value) }))} /><span>{style.maxWidth}%</span></label>
-                <label>Font<select value={style.fontFamily} onChange={(event) => setStyle((current) => ({ ...current, fontFamily: event.target.value }))}><option value="Arial, Helvetica, sans-serif">Arial</option><option value="Georgia, serif">Georgia</option><option value="Verdana, sans-serif">Verdana</option><option value="Trebuchet MS, sans-serif">Trebuchet</option><option value="system-ui, sans-serif">System</option></select></label>
-                <label>Alignment<select value={style.textAlign} onChange={(event) => setStyle((current) => ({ ...current, textAlign: event.target.value }))}><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
+                <label>{t.textColor}<input type="color" value={style.textColor} onChange={(event) => setStyle((current) => ({ ...current, textColor: event.target.value }))} /></label>
+                <label>{t.fontSize}<input type="range" min="38" max="140" value={style.fontSize} onChange={(event) => setStyle((current) => ({ ...current, fontSize: Number(event.target.value) }))} /><span>{style.fontSize}px</span></label>
+                <label>{t.overlay}<input type="range" min="0" max="0.85" step="0.05" value={style.overlay} onChange={(event) => setStyle((current) => ({ ...current, overlay: Number(event.target.value) }))} /><span>{Math.round(style.overlay * 100)}%</span></label>
+                <label>{t.width}<input type="range" min="50" max="96" value={style.maxWidth} onChange={(event) => setStyle((current) => ({ ...current, maxWidth: Number(event.target.value) }))} /><span>{style.maxWidth}%</span></label>
+                <label>{t.font}<select value={style.fontFamily} onChange={(event) => setStyle((current) => ({ ...current, fontFamily: event.target.value }))}><option value="Arial, Helvetica, sans-serif">Arial</option><option value="Georgia, serif">Georgia</option><option value="Verdana, sans-serif">Verdana</option><option value="Trebuchet MS, sans-serif">Trebuchet</option><option value="system-ui, sans-serif">System</option></select></label>
+                <label>{t.alignment}<select value={style.textAlign} onChange={(event) => setStyle((current) => ({ ...current, textAlign: event.target.value }))}><option value="left">{t.left}</option><option value="center">{t.center}</option><option value="right">{t.right}</option></select></label>
               </div>
 
-              <label className="checkbox-row"><input type="checkbox" checked={style.textShadow} onChange={(event) => setStyle((current) => ({ ...current, textShadow: event.target.checked }))} />Strong text shadow for readability</label>
+              <label className="checkbox-row"><input type="checkbox" checked={style.textShadow} onChange={(event) => setStyle((current) => ({ ...current, textShadow: event.target.checked }))} />{t.textShadow}</label>
 
               <div className="image-controls">
-                <label>Background image URL<input value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="Paste a direct image URL" /></label>
-                <button className="secondary" onClick={applyImageUrl}>Use on Selected Verse</button>
-                <label className="upload-button">Upload Image for Selected Verse<input type="file" accept="image/*" onChange={handleImageUpload} /></label>
-                <button className="ghost" onClick={() => { setImageUrl(''); updateSelectedSlide({ backgroundImage: '' }); }}>Clear Verse Image</button>
+                <label>{t.imageUrl}<input value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder={t.imagePlaceholder} /></label>
+                <button className="secondary" onClick={applyImageUrl}>{t.useSelected}</button>
+                <label className="upload-button">{t.uploadImage}<input type="file" accept="image/*" onChange={handleImageUpload} /></label>
+                <button className="ghost" onClick={() => { setImageUrl(''); updateSelectedSlide({ backgroundImage: '' }); }}>{t.clearImage}</button>
               </div>
             </div>
 
             <div className="panel background-panel">
-              <div className="section-head">
-                <div>
-                  <span className="section-label">Free Background Sources</span>
-                  <h2>Find Worship Images</h2>
-                </div>
-              </div>
-              <p className="panel-copy">Select a verse first. Then choose a color above or download a free image and upload it. Each verse can have its own background, and it stays saved locally on this PC.</p>
+              <div className="section-head"><div><span className="section-label">{t.freeBackgrounds}</span><h2>{t.findImages}</h2></div></div>
+              <p className="panel-copy">{t.backgroundHelp}</p>
               <div className="background-links">
-                {FREE_BACKGROUND_LINKS.map((item) => (
-                  <a key={item.url} href={item.url} target="_blank" rel="noreferrer">{item.label}<span>↗</span></a>
-                ))}
+                {FREE_BACKGROUND_LINKS.map((item) => <a key={item.url} href={item.url} target="_blank" rel="noreferrer">{item.label}<span>↗</span></a>)}
               </div>
-              <div className="tip-box"><strong>How it works:</strong> click a verse card, then click a color or upload an image. Only that selected verse changes.</div>
+              <div className="tip-box"><strong>{t.howWorks}</strong> {t.howWorksText}</div>
             </div>
           </div>
         </section>
@@ -608,50 +902,66 @@ function ControlView() {
 
       {editingSlide && (
         <SlideEditor
-          slide={song.slides.find((item) => item.id === editingSlide)}
+          slide={lyrics.slides.find((item) => item.id === editingSlide)}
+          t={t}
           onClose={() => setEditingSlide(null)}
           onSave={(next) => saveSlide(editingSlide, next)}
         />
       )}
 
-      {showSongEditor && (
-        <SongEditor
-          title={song.title}
-          onClose={() => setShowSongEditor(false)}
+      {showLyricsEditor && (
+        <LyricsEditor
+          title={lyrics.title}
+          t={t}
+          onClose={() => setShowLyricsEditor(false)}
           onSave={(title) => {
-            updateSong((current) => ({ ...current, title }));
-            setShowSongEditor(false);
+            updateLyrics((current) => ({ ...current, title }));
+            setShowLyricsEditor(false);
           }}
         />
+      )}
+
+      {showInstall && (
+        <div className="install-card">
+          <button className="install-close" onClick={() => setShowInstall(false)} aria-label="Close">×</button>
+          <div className="install-icon">♫</div>
+          <strong>{t.installTitle}</strong>
+          <span>{t.installPt}</span>
+          {installMessage && <small>{installMessage}</small>}
+          <div className="install-actions">
+            <button className="primary" onClick={installDesktop}>{t.installButton}</button>
+            <button className="ghost" onClick={() => setShowInstall(false)}>{t.notNow}</button>
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-function SlideEditor({ slide, onClose, onSave }) {
+function SlideEditor({ slide, t, onClose, onSave }) {
   const [label, setLabel] = useState(slide?.label || 'Verse');
   const [text, setText] = useState(slide?.text || '');
   if (!slide) return null;
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
       <div className="modal" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="modal-head"><div><span className="section-label">Edit Slide</span><h2>{slide.label}</h2></div><button className="icon-button" onClick={onClose}>×</button></div>
-        <label>Label<input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Verse 1 / Chorus / Bridge" /></label>
-        <label>Lyrics<textarea rows="10" value={text} onChange={(event) => setText(event.target.value)} /></label>
-        <div className="modal-actions"><button className="ghost" onClick={onClose}>Cancel</button><button className="primary" onClick={() => onSave({ label: label.trim() || 'Verse', text })}>Save Slide</button></div>
+        <div className="modal-head"><div><span className="section-label">{t.editSlide}</span><h2>{slide.label}</h2></div><button className="icon-button" onClick={onClose}>×</button></div>
+        <label>{t.label}<input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Verse 1 / Chorus / Bridge" /></label>
+        <label>{t.lyrics}<textarea rows="10" value={text} onChange={(event) => setText(event.target.value)} /></label>
+        <div className="modal-actions"><button className="ghost" onClick={onClose}>{t.cancel}</button><button className="primary" onClick={() => onSave({ label: label.trim() || 'Verse', text })}>{t.saveSlide}</button></div>
       </div>
     </div>
   );
 }
 
-function SongEditor({ title, onClose, onSave }) {
+function LyricsEditor({ title, t, onClose, onSave }) {
   const [value, setValue] = useState(title);
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
       <div className="modal small" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="modal-head"><div><span className="section-label">Song</span><h2>Rename Song</h2></div><button className="icon-button" onClick={onClose}>×</button></div>
-        <label>Song title<input autoFocus value={value} onChange={(event) => setValue(event.target.value)} /></label>
-        <div className="modal-actions"><button className="ghost" onClick={onClose}>Cancel</button><button className="primary" onClick={() => onSave(value.trim() || 'Untitled Song')}>Save</button></div>
+        <div className="modal-head"><div><span className="section-label">{t.lyrics}</span><h2>{t.renameTitle}</h2></div><button className="icon-button" onClick={onClose}>×</button></div>
+        <label>{t.lyricsName}<input autoFocus value={value} onChange={(event) => setValue(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') onSave(value.trim() || t.untitled); }} /></label>
+        <div className="modal-actions"><button className="ghost" onClick={onClose}>{t.cancel}</button><button className="primary" onClick={() => onSave(value.trim() || t.untitled)}>{t.save}</button></div>
       </div>
     </div>
   );
