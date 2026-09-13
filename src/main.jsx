@@ -4,6 +4,7 @@ import App from './App.jsx';
 import './styles.css';
 import './responsive.css';
 import './extras.css';
+import './compactLayout.css';
 import './lyricsSearch.js';
 import './fullLyricsPaste.css';
 import './fullLyricsPaste.js';
