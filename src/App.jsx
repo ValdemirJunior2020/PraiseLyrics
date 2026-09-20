@@ -80,6 +80,7 @@ const COPY = {
     renameLyrics: 'Rename Lyrics',
     deleteLyrics: 'Delete Lyrics',
     chooseFolder: 'Choose Lyrics Folder',
+    saveToFolder: 'Save to Folder',
     folderHelp: 'Choose Downloads once. PraiseLyrics will save the complete library there automatically.',
     tvWall: 'TV Wall',
     chooseDisplay: 'Choose after Detect Displays',
@@ -132,6 +133,7 @@ const COPY = {
     folderNeeded: 'Choose your Downloads folder to turn on automatic file saving.',
     saveError: 'Could not save the Lyrics library. Choose the folder again.',
     saved: 'Saved',
+    savedNow: 'Saved to folder now',
     saving: 'Saving…',
     loadError: 'The Lyrics library file could not be read.',
     browserNoFolder: 'Automatic file saving needs Chrome or Edge. Use one of those browsers for the church computer.',
@@ -163,6 +165,7 @@ const COPY = {
     renameLyrics: 'Renomear Letra',
     deleteLyrics: 'Excluir Letra',
     chooseFolder: 'Escolher Pasta das Letras',
+    saveToFolder: 'Salvar na Pasta',
     folderHelp: 'Escolha Downloads uma vez. O PraiseLyrics salvará toda a biblioteca automaticamente lá.',
     tvWall: 'Telão',
     chooseDisplay: 'Escolha após Detectar Telas',
@@ -215,6 +218,7 @@ const COPY = {
     folderNeeded: 'Escolha sua pasta Downloads para ativar o salvamento automático.',
     saveError: 'Não foi possível salvar a biblioteca. Escolha a pasta novamente.',
     saved: 'Salvo',
+    savedNow: 'Salvo na pasta agora',
     saving: 'Salvando…',
     loadError: 'Não foi possível ler o arquivo da biblioteca.',
     browserNoFolder: 'O salvamento automático precisa do Chrome ou Edge no computador da igreja.',
@@ -535,6 +539,70 @@ function ControlView() {
     }
   }
 
+  function downloadLibraryBackup() {
+    const payload = {
+      version: 2,
+      savedAt: new Date().toISOString(),
+      activeLyricsId: lyrics?.id || lyricsList[0]?.id || '',
+      lyrics: lyricsList,
+      style,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = LIBRARY_FILE;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setSaveStatus(`${t.savedNow} ✓`);
+  }
+
+  async function saveToFolderNow() {
+    const payload = {
+      version: 2,
+      savedAt: new Date().toISOString(),
+      activeLyricsId: lyrics?.id || lyricsList[0]?.id || '',
+      lyrics: lyricsList,
+      style,
+    };
+
+    if (!window.showDirectoryPicker) {
+      downloadLibraryBackup();
+      return;
+    }
+
+    try {
+      setSaveStatus(t.saving);
+      let handle = directoryHandle;
+
+      if (!handle) {
+        handle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'downloads' });
+        await storeDirectoryHandle(handle);
+      } else {
+        let permission = await handle.queryPermission?.({ mode: 'readwrite' });
+        if (permission !== 'granted' && handle.requestPermission) {
+          permission = await handle.requestPermission({ mode: 'readwrite' });
+        }
+        if (permission !== 'granted') {
+          handle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'downloads' });
+          await storeDirectoryHandle(handle);
+        }
+      }
+
+      await writeLibrary(handle, payload);
+      setDirectoryHandle(handle);
+      setFolderReady(true);
+      setSaveStatus(`${t.savedNow} ✓`);
+    } catch (error) {
+      if (error?.name !== 'AbortError') {
+        setFolderReady(false);
+        setSaveStatus(t.saveError);
+      }
+    }
+  }
+
   async function installDesktop() {
     if (!installPrompt) {
       setInstallMessage(t.installFallback);
@@ -744,6 +812,7 @@ function ControlView() {
 
       <div className="savebar">
         <button className="secondary compact" onClick={chooseLyricsFolder}>📁 {t.chooseFolder}</button>
+        <button className="primary compact" onClick={saveToFolderNow}>💾 {t.saveToFolder}</button>
         <span className={folderReady ? 'save-state ready' : 'save-state'}>{saveStatus}</span>
       </div>
 
