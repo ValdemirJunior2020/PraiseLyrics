@@ -467,7 +467,10 @@ function ControlView() {
           setLyricsList(mergedLyrics);
           setLyricsId(saved.activeLyricsId || mergedLyrics[0].id);
           setStyle({ ...DEFAULT_STYLE, ...(saved.style || {}) });
-          if (Array.isArray(saved.todayLyricsIds)) setTodayLyricsIds(saved.todayLyricsIds);
+          const browserToday = localStorage.getItem('praise-lyrics-today');
+          if (browserToday === null && Array.isArray(saved.todayLyricsIds)) {
+            setTodayLyricsIds(saved.todayLyricsIds);
+          }
         }
         setSaveStatus(COPY[language].folderReady);
       } catch {
