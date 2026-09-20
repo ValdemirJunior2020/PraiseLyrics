@@ -80,7 +80,7 @@ const COPY = {
     renameLyrics: 'Rename Lyrics',
     deleteLyrics: 'Delete Lyrics',
     chooseFolder: 'Choose Lyrics Folder',
-    saveToFolder: 'Save to Folder',
+    saveToFolder: 'Save Current Lyrics',
     folderHelp: 'Choose Downloads once. PraiseLyrics will save the complete library there automatically.',
     tvWall: 'TV Wall',
     chooseDisplay: 'Choose after Detect Displays',
@@ -165,7 +165,7 @@ const COPY = {
     renameLyrics: 'Renomear Letra',
     deleteLyrics: 'Excluir Letra',
     chooseFolder: 'Escolher Pasta das Letras',
-    saveToFolder: 'Salvar na Pasta',
+    saveToFolder: 'Salvar Letra Atual',
     folderHelp: 'Escolha Downloads uma vez. O PraiseLyrics salvará toda a biblioteca automaticamente lá.',
     tvWall: 'Telão',
     chooseDisplay: 'Escolha após Detectar Telas',
@@ -366,6 +366,15 @@ function DisplayView() {
   );
 }
 
+function safeLyricsFileName(title) {
+  const cleaned = String(title || 'Untitled Lyrics')
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[. ]+$/g, '');
+  return `${cleaned || 'Untitled Lyrics'}.json`;
+}
+
 function ControlView() {
   const [language, setLanguage] = useState('en');
   const t = COPY[language];
@@ -539,37 +548,42 @@ function ControlView() {
     }
   }
 
-  function downloadLibraryBackup() {
+  function downloadCurrentLyrics() {
+    if (!lyrics) return;
+    const fileName = safeLyricsFileName(lyrics.title);
     const payload = {
-      version: 2,
+      version: 1,
       savedAt: new Date().toISOString(),
-      activeLyricsId: lyrics?.id || lyricsList[0]?.id || '',
-      lyrics: lyricsList,
+      title: lyrics.title,
+      lyrics,
       style,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = LIBRARY_FILE;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setSaveStatus(`${t.savedNow} ✓`);
+    setSaveStatus(`${t.savedNow}: ${fileName} ✓`);
   }
 
   async function saveToFolderNow() {
+    if (!lyrics) return;
+
+    const fileName = safeLyricsFileName(lyrics.title);
     const payload = {
-      version: 2,
+      version: 1,
       savedAt: new Date().toISOString(),
-      activeLyricsId: lyrics?.id || lyricsList[0]?.id || '',
-      lyrics: lyricsList,
+      title: lyrics.title,
+      lyrics,
       style,
     };
 
     if (!window.showDirectoryPicker) {
-      downloadLibraryBackup();
+      downloadCurrentLyrics();
       return;
     }
 
@@ -591,10 +605,14 @@ function ControlView() {
         }
       }
 
-      await writeLibrary(handle, payload);
+      const fileHandle = await handle.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(payload, null, 2));
+      await writable.close();
+
       setDirectoryHandle(handle);
       setFolderReady(true);
-      setSaveStatus(`${t.savedNow} ✓`);
+      setSaveStatus(`${t.savedNow}: ${fileName} ✓`);
     } catch (error) {
       if (error?.name !== 'AbortError') {
         setFolderReady(false);
