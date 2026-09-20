@@ -148,6 +148,8 @@ const COPY = {
     screenUnsupported: 'This browser cannot list screens. Open the wall and move it manually.',
     screenDetected: (n) => `Detected ${n} display${n === 1 ? '' : 's'}. Select the TV wall, then click Open Wall.`,
     screenDenied: 'Screen permission was not granted.',
+    onlyOneScreen: 'Only 1 display detected. Windows/Edge is not exposing a separate TV wall yet.',
+    openingExternal: 'Opening wall on the external display…',
     wallBlocked: 'The browser blocked the wall window. Allow popups and try again.',
     wallOpened: 'Wall opened.',
     imageTooLarge: 'That image is larger than 12 MB. Please use a smaller image.',
@@ -240,6 +242,8 @@ const COPY = {
     screenUnsupported: 'Este navegador não consegue listar as telas. Abra o telão e mova manualmente.',
     screenDetected: (n) => `${n} tela${n === 1 ? '' : 's'} detectada${n === 1 ? '' : 's'}. Selecione o telão e clique em Abrir Telão.`,
     screenDenied: 'A permissão para detectar telas não foi concedida.',
+    onlyOneScreen: 'Apenas 1 tela detectada. O Windows/Edge ainda não está mostrando o telão como uma tela separada.',
+    openingExternal: 'Abrindo o telão na tela externa…',
     wallBlocked: 'O navegador bloqueou a janela do telão. Permita pop-ups e tente novamente.',
     wallOpened: 'Telão aberto.',
     imageTooLarge: 'A imagem tem mais de 12 MB. Use uma imagem menor.',
@@ -745,38 +749,80 @@ function ControlView() {
         height: screen.height,
       }));
       setScreenOptions(mapped);
-      if (!selectedScreenId && mapped.length) {
+      if (mapped.length) {
         const nonPrimary = details.screens.find((item) => !item.isPrimary) || details.screens[0];
         setSelectedScreenId(`${nonPrimary.left}:${nonPrimary.top}:${nonPrimary.width}:${nonPrimary.height}`);
       }
-      setStatus(t.screenDetected(mapped.length));
+      setStatus(mapped.length === 1 ? t.onlyOneScreen : t.screenDetected(mapped.length));
     } catch {
       setStatus(t.screenDenied);
     }
   }
 
   async function openWall() {
-    const selected = screenOptions.find((item) => item.id === selectedScreenId);
+    let selected = null;
+    let latestOptions = screenOptions;
+
+    if (window.getScreenDetails) {
+      try {
+        const details = await window.getScreenDetails();
+        latestOptions = details.screens.map((screen, index) => ({
+          id: `${screen.left}:${screen.top}:${screen.width}:${screen.height}`,
+          label: `${screen.label || `Display ${index + 1}`} — ${screen.width}×${screen.height}${screen.isPrimary ? ' (Primary)' : ''}`,
+          left: screen.left,
+          top: screen.top,
+          width: screen.width,
+          height: screen.height,
+          isPrimary: screen.isPrimary,
+        }));
+        setScreenOptions(latestOptions);
+
+        if (latestOptions.length === 1) {
+          const only = latestOptions[0];
+          setSelectedScreenId(only.id);
+          setStatus(t.onlyOneScreen);
+          return;
+        }
+
+        selected =
+          latestOptions.find((item) => item.id === selectedScreenId && !item.isPrimary) ||
+          latestOptions.find((item) => !item.isPrimary) ||
+          latestOptions[0];
+
+        setSelectedScreenId(selected.id);
+        setStatus(t.openingExternal);
+      } catch {
+        setStatus(t.screenDenied);
+        return;
+      }
+    } else {
+      selected = latestOptions.find((item) => item.id === selectedScreenId) || null;
+    }
+
     const features = selected
       ? `popup=yes,left=${selected.left},top=${selected.top},width=${selected.width},height=${selected.height}`
       : 'popup=yes,width=1280,height=720';
+
     const displayUrl = `${window.location.origin}${import.meta.env.BASE_URL}?display=1`;
     wallRef.current = window.open(displayUrl, 'PraiseLyricsWall', features);
+
     if (!wallRef.current) {
       setStatus(t.wallBlocked);
       return;
     }
+
     try {
-      wallRef.current.focus();
       if (selected) {
         wallRef.current.moveTo(selected.left, selected.top);
         wallRef.current.resizeTo(selected.width, selected.height);
       }
+      wallRef.current.focus();
     } catch {
-      // Browser may block moving windows until display permission is granted.
+      // Edge may restrict programmatic moving even after screen permission.
     }
+
     setStatus(t.wallOpened);
-    setTimeout(() => sendLive(liveIndex, blank, style), 500);
+    setTimeout(() => sendLive(liveIndex, blank, style), 700);
   }
 
   function addSlide() {
