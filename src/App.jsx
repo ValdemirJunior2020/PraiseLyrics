@@ -81,6 +81,13 @@ const COPY = {
     deleteLyrics: 'Delete Lyrics',
     chooseFolder: 'Choose Lyrics Folder',
     saveToFolder: 'Save Current Lyrics',
+    todayLyrics: 'Lyrics for Today',
+    openToday: 'Open Lyrics for Today',
+    addToToday: 'Add to Today',
+    removeFromToday: 'Remove',
+    backToLibrary: 'Back to Library',
+    clearToday: 'Clear Today',
+    todayEmpty: 'No lyrics planned for today yet.',
     folderHelp: 'Choose Downloads once. PraiseLyrics will save the complete library there automatically.',
     tvWall: 'TV Wall',
     chooseDisplay: 'Choose after Detect Displays',
@@ -166,6 +173,13 @@ const COPY = {
     deleteLyrics: 'Excluir Letra',
     chooseFolder: 'Escolher Pasta das Letras',
     saveToFolder: 'Salvar Letra Atual',
+    todayLyrics: 'Letras de Hoje',
+    openToday: 'Abrir Letras de Hoje',
+    addToToday: 'Adicionar a Hoje',
+    removeFromToday: 'Remover',
+    backToLibrary: 'Voltar à Biblioteca',
+    clearToday: 'Limpar Hoje',
+    todayEmpty: 'Nenhuma letra planejada para hoje ainda.',
     folderHelp: 'Escolha Downloads uma vez. O PraiseLyrics salvará toda a biblioteca automaticamente lá.',
     tvWall: 'Telão',
     chooseDisplay: 'Escolha após Detectar Telas',
@@ -386,6 +400,14 @@ function ControlView() {
   const [blank, setBlank] = useState(true);
   const [editingSlide, setEditingSlide] = useState(null);
   const [showLyricsEditor, setShowLyricsEditor] = useState(false);
+  const [todayLyricsIds, setTodayLyricsIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('praise-lyrics-today') || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [showToday, setShowToday] = useState(false);
   const [screenOptions, setScreenOptions] = useState([]);
   const [selectedScreenId, setSelectedScreenId] = useState('');
   const [status, setStatus] = useState(t.wallNotOpen);
@@ -401,6 +423,11 @@ function ControlView() {
 
   const lyrics = lyricsList.find((item) => item.id === lyricsId) || lyricsList[0];
   const selectedSlide = lyrics?.slides?.[selectedIndex];
+  const todayLyrics = lyricsList.filter((item) => todayLyricsIds.includes(item.id));
+
+  useEffect(() => {
+    localStorage.setItem('praise-lyrics-today', JSON.stringify(todayLyricsIds));
+  }, [todayLyricsIds]);
 
   useEffect(() => {
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone;
@@ -436,6 +463,7 @@ function ControlView() {
           setLyricsList(mergedLyrics);
           setLyricsId(saved.activeLyricsId || mergedLyrics[0].id);
           setStyle({ ...DEFAULT_STYLE, ...(saved.style || {}) });
+          if (Array.isArray(saved.todayLyricsIds)) setTodayLyricsIds(saved.todayLyricsIds);
         }
         setSaveStatus(COPY[language].folderReady);
       } catch {
@@ -458,6 +486,7 @@ function ControlView() {
           activeLyricsId: lyrics?.id || lyricsList[0]?.id || '',
           lyrics: lyricsList,
           style,
+          todayLyricsIds,
         });
         setSaveStatus(`${t.saved} ✓`);
       } catch {
@@ -466,7 +495,7 @@ function ControlView() {
       }
     }, 650);
     return () => clearTimeout(timer);
-  }, [lyricsList, lyrics?.id, style, directoryHandle, folderReady, t.saved, t.saving, t.saveError]);
+  }, [lyricsList, lyrics?.id, style, todayLyricsIds, directoryHandle, folderReady, t.saved, t.saving, t.saveError]);
 
   useEffect(() => {
     setImageUrl(selectedSlide?.backgroundImage || '');
@@ -538,6 +567,7 @@ function ControlView() {
           activeLyricsId: lyrics?.id || lyricsList[0]?.id || '',
           lyrics: lyricsList,
           style,
+          todayLyricsIds,
         });
       }
       setDirectoryHandle(handle);
@@ -619,6 +649,32 @@ function ControlView() {
         setSaveStatus(t.saveError);
       }
     }
+  }
+
+  function addCurrentToToday() {
+    if (!lyrics) return;
+    setTodayLyricsIds((current) => current.includes(lyrics.id) ? current : [...current, lyrics.id]);
+  }
+
+  function addSongToToday(id) {
+    setTodayLyricsIds((current) => current.includes(id) ? current : [...current, id]);
+  }
+
+  function removeSongFromToday(id) {
+    setTodayLyricsIds((current) => current.filter((item) => item !== id));
+  }
+
+  function openPlannedLyrics(id) {
+    const planned = lyricsList.find((item) => item.id === id);
+    if (!planned) return;
+    setLyricsId(id);
+    setLiveIndex(0);
+    setSelectedIndex(0);
+    setBlank(true);
+  }
+
+  function clearTodayLyrics() {
+    setTodayLyricsIds([]);
   }
 
   async function installDesktop() {
@@ -831,6 +887,7 @@ function ControlView() {
       <div className="savebar">
         <button className="secondary compact" onClick={chooseLyricsFolder}>📁 {t.chooseFolder}</button>
         <button className="primary compact" onClick={saveToFolderNow}>💾 {t.saveToFolder}</button>
+        <button className="secondary compact" onClick={() => setShowToday(true)}>📅 {t.openToday} ({todayLyrics.length})</button>
         <span className={folderReady ? 'save-state ready' : 'save-state'}>{saveStatus}</span>
       </div>
 
@@ -844,44 +901,76 @@ function ControlView() {
         <aside className="sidebar panel">
           <div className="section-head">
             <div>
-              <span className="section-label">{t.library}</span>
-              <h2>{t.lyricsCount(lyricsList.length)}</h2>
+              <span className="section-label">{showToday ? t.todayLyrics : t.library}</span>
+              <h2>{showToday ? t.lyricsCount(todayLyrics.length) : t.lyricsCount(lyricsList.length)}</h2>
             </div>
-            <button className="icon-button" onClick={newLyrics} title={t.newLyrics}>＋</button>
+            {showToday
+              ? <button className="icon-button" onClick={() => setShowToday(false)} title={t.backToLibrary}>←</button>
+              : <button className="icon-button" onClick={newLyrics} title={t.newLyrics}>＋</button>}
           </div>
 
-          <div className="song-list">
-            {lyricsList.map((item) => (
-              <div key={item.id} className={`song-item lyrics-item ${item.id === lyrics.id ? 'selected' : ''}`}>
-                <button
-                  className="lyrics-name-button"
-                  title={t.renameLyrics}
-                  onClick={() => {
-                    setLyricsId(item.id);
-                    setShowLyricsEditor(true);
-                  }}
-                >
-                  <strong>{item.title}</strong><span className="rename-mark">✎</span>
-                </button>
-                <button
-                  className="lyrics-open-button"
-                  onClick={() => {
-                    setLyricsId(item.id);
-                    setLiveIndex(0);
-                    setSelectedIndex(0);
-                    setBlank(true);
-                  }}
-                >
-                  {item.slides.length} {language === 'pt' ? (item.slides.length === 1 ? 'tela' : 'telas') : (item.slides.length === 1 ? 'slide' : 'slides')}
-                </button>
+          {showToday ? (
+            <>
+              <div className="song-list">
+                {todayLyrics.map((item, index) => (
+                  <div key={item.id} className={`song-item lyrics-item ${item.id === lyrics.id ? 'selected' : ''}`}>
+                    <button className="lyrics-name-button" onClick={() => openPlannedLyrics(item.id)}>
+                      <strong>{index + 1}. {item.title}</strong>
+                    </button>
+                    <button className="lyrics-open-button" onClick={() => openPlannedLyrics(item.id)}>
+                      {language === 'pt' ? 'Abrir' : 'Open'}
+                    </button>
+                    <button className="ghost" onClick={() => removeSongFromToday(item.id)}>{t.removeFromToday}</button>
+                  </div>
+                ))}
+                {!todayLyrics.length && <div className="tip-box">{t.todayEmpty}</div>}
               </div>
-            ))}
-          </div>
+              <div className="sidebar-actions">
+                <button className="secondary full" onClick={() => setShowToday(false)}>{t.backToLibrary}</button>
+                <button className="ghost full" disabled={!todayLyrics.length} onClick={clearTodayLyrics}>{t.clearToday}</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="song-list">
+                {lyricsList.map((item) => (
+                  <div key={item.id} className={`song-item lyrics-item ${item.id === lyrics.id ? 'selected' : ''}`}>
+                    <button
+                      className="lyrics-name-button"
+                      title={t.renameLyrics}
+                      onClick={() => {
+                        setLyricsId(item.id);
+                        setShowLyricsEditor(true);
+                      }}
+                    >
+                      <strong>{item.title}</strong><span className="rename-mark">✎</span>
+                    </button>
+                    <button
+                      className="lyrics-open-button"
+                      onClick={() => {
+                        setLyricsId(item.id);
+                        setLiveIndex(0);
+                        setSelectedIndex(0);
+                        setBlank(true);
+                      }}
+                    >
+                      {item.slides.length} {language === 'pt' ? (item.slides.length === 1 ? 'tela' : 'telas') : (item.slides.length === 1 ? 'slide' : 'slides')}
+                    </button>
+                    <button className="ghost" disabled={todayLyricsIds.includes(item.id)} onClick={() => addSongToToday(item.id)}>
+                      {todayLyricsIds.includes(item.id) ? '✓' : '＋'} {t.addToToday}
+                    </button>
+                  </div>
+                ))}
+              </div>
 
-          <div className="sidebar-actions">
-            <button className="secondary full" onClick={() => setShowLyricsEditor(true)}>{t.renameLyrics}</button>
-            <button className="ghost full" disabled={lyricsList.length === 1} onClick={deleteLyrics}>{t.deleteLyrics}</button>
-          </div>
+              <div className="sidebar-actions">
+                <button className="primary full" onClick={addCurrentToToday} disabled={!lyrics || todayLyricsIds.includes(lyrics.id)}>📅 {t.addToToday}</button>
+                <button className="secondary full" onClick={() => setShowToday(true)}>📅 {t.openToday} ({todayLyrics.length})</button>
+                <button className="secondary full" onClick={() => setShowLyricsEditor(true)}>{t.renameLyrics}</button>
+                <button className="ghost full" disabled={lyricsList.length === 1} onClick={deleteLyrics}>{t.deleteLyrics}</button>
+              </div>
+            </>
+          )}
 
           <div className="screen-box">
             <span className="section-label">{t.tvWall}</span>
