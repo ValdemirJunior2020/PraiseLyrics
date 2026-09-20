@@ -778,19 +778,18 @@ function ControlView() {
         setScreenOptions(latestOptions);
 
         if (latestOptions.length === 1) {
-          const only = latestOptions[0];
-          setSelectedScreenId(only.id);
+          selected = latestOptions[0];
+          setSelectedScreenId(selected.id);
           setStatus(t.onlyOneScreen);
-          return;
+        } else {
+          selected =
+            latestOptions.find((item) => item.id === selectedScreenId && !item.isPrimary) ||
+            latestOptions.find((item) => !item.isPrimary) ||
+            latestOptions[0];
+
+          setSelectedScreenId(selected.id);
+          setStatus(t.openingExternal);
         }
-
-        selected =
-          latestOptions.find((item) => item.id === selectedScreenId && !item.isPrimary) ||
-          latestOptions.find((item) => !item.isPrimary) ||
-          latestOptions[0];
-
-        setSelectedScreenId(selected.id);
-        setStatus(t.openingExternal);
       } catch {
         setStatus(t.screenDenied);
         return;
