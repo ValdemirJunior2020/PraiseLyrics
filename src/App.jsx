@@ -6,6 +6,7 @@ const LIBRARY_FILE = 'PraiseLyrics-Library.json';
 const HANDLE_DB = 'praise-lyrics-permissions';
 const HANDLE_STORE = 'handles';
 const HANDLE_KEY = 'lyrics-folder';
+const BROWSER_BACKUP_KEY = 'praise-lyrics-browser-backup-v1';
 
 const DEFAULT_GRADIENTS = [
   { name: 'Midnight', value: 'linear-gradient(135deg,#020617 0%,#111827 45%,#1e293b 100%)' },
@@ -70,6 +71,10 @@ const COPY = {
     appSubtitle: 'Control everything here. The TV wall only receives the live lyrics.',
     detect: 'Detect Displays',
     openWall: 'Open Wall',
+    openLocalLyrics: 'Open Local Lyrics',
+    localLyricsOpened: 'Local lyrics opened ✓',
+    localLyricsError: 'Could not open that lyrics file.',
+    fullscreenHint: 'Click anywhere once to make the wall full screen',
     showLyrics: 'Show Lyrics',
     blankWall: 'Blank Wall',
     wallBlank: 'WALL BLANK',
@@ -164,6 +169,10 @@ const COPY = {
     appSubtitle: 'Controle tudo aqui. O telão recebe somente as letras ao vivo.',
     detect: 'Detectar Telas',
     openWall: 'Abrir Telão',
+    openLocalLyrics: 'Abrir Letras Locais',
+    localLyricsOpened: 'Letras locais abertas ✓',
+    localLyricsError: 'Não foi possível abrir esse arquivo de letras.',
+    fullscreenHint: 'Clique uma vez para deixar o telão em tela cheia',
     showLyrics: 'Mostrar Letras',
     blankWall: 'Apagar Telão',
     wallBlank: 'TELÃO APAGADO',
@@ -338,16 +347,31 @@ function BroadcastBridge({ onMessage }) {
 
 function DisplayView() {
   const [live, setLive] = useState(() => buildLivePayload(null, 0, DEFAULT_STYLE, true));
+  const [needsFullscreen, setNeedsFullscreen] = useState(() => !document.fullscreenElement);
   const receive = useCallback((payload) => {
     if (payload?.type === 'LIVE_UPDATE') setLive(payload);
   }, []);
 
   useEffect(() => {
-    const requestFullscreen = () => {
-      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+    const requestFullscreen = async () => {
+      if (!document.fullscreenElement) {
+        try {
+          await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' });
+        } catch {
+          // Browsers only allow fullscreen after a user gesture.
+        }
+      }
+      setNeedsFullscreen(!document.fullscreenElement);
     };
+    const syncFullscreen = () => setNeedsFullscreen(!document.fullscreenElement);
     window.addEventListener('click', requestFullscreen, { once: true });
-    return () => window.removeEventListener('click', requestFullscreen);
+    window.addEventListener('keydown', requestFullscreen, { once: true });
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => {
+      window.removeEventListener('click', requestFullscreen);
+      window.removeEventListener('keydown', requestFullscreen);
+      document.removeEventListener('fullscreenchange', syncFullscreen);
+    };
   }, []);
 
   const style = live?.style || DEFAULT_STYLE;
@@ -363,6 +387,20 @@ function DisplayView() {
   return (
     <main className="display-root" style={backgroundStyle}>
       <BroadcastBridge onMessage={receive} />
+      {needsFullscreen && (
+        <button
+          type="button"
+          className="wall-fullscreen-hint"
+          onClick={async () => {
+            try {
+              await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' });
+            } catch {}
+            setNeedsFullscreen(!document.fullscreenElement);
+          }}
+        >
+          Full Screen / Tela Cheia
+        </button>
+      )}
       {!live.blank && live.slide && (
         <div
           className="display-lyrics"
@@ -382,6 +420,14 @@ function DisplayView() {
       )}
     </main>
   );
+}
+
+function readBrowserBackup() {
+  try {
+    return JSON.parse(localStorage.getItem(BROWSER_BACKUP_KEY) || 'null');
+  } catch {
+    return null;
+  }
 }
 
 function safeLyricsFileName(title) {
@@ -432,6 +478,33 @@ function ControlView() {
   useEffect(() => {
     localStorage.setItem('praise-lyrics-today', JSON.stringify(todayLyricsIds));
   }, [todayLyricsIds]);
+
+  useEffect(() => {
+    const saved = readBrowserBackup();
+    if (!saved?.lyrics?.length) return;
+    const mergedLyrics = mergeStarterLyrics(saved.lyrics);
+    setLyricsList(mergedLyrics);
+    setLyricsId(saved.activeLyricsId && mergedLyrics.some((item) => item.id === saved.activeLyricsId)
+      ? saved.activeLyricsId
+      : mergedLyrics[0].id);
+    setStyle({ ...DEFAULT_STYLE, ...(saved.style || {}) });
+    if (Array.isArray(saved.todayLyricsIds)) setTodayLyricsIds(saved.todayLyricsIds);
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(BROWSER_BACKUP_KEY, JSON.stringify({
+        version: 1,
+        savedAt: new Date().toISOString(),
+        activeLyricsId: lyrics?.id || lyricsList[0]?.id || '',
+        lyrics: lyricsList,
+        style,
+        todayLyricsIds,
+      }));
+    } catch {
+      // Browser backup is best-effort; folder saving still works independently.
+    }
+  }, [lyricsList, lyrics?.id, style, todayLyricsIds]);
 
   useEffect(() => {
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone;
@@ -553,6 +626,59 @@ function ControlView() {
     window.addEventListener('keydown', keyHandler);
     return () => window.removeEventListener('keydown', keyHandler);
   });
+
+  async function openLocalLyrics() {
+    try {
+      let file;
+      if (window.showOpenFilePicker) {
+        const [handle] = await window.showOpenFilePicker({
+          multiple: false,
+          types: [{
+            description: 'PraiseLyrics JSON',
+            accept: { 'application/json': ['.json'] },
+          }],
+        });
+        file = await handle.getFile();
+      } else {
+        file = await new Promise((resolve, reject) => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.json,application/json';
+          input.onchange = () => input.files?.[0] ? resolve(input.files[0]) : reject(new Error('No file selected'));
+          input.click();
+        });
+      }
+
+      const parsed = JSON.parse(await file.text());
+      if (Array.isArray(parsed?.lyrics)) {
+        const mergedLyrics = mergeStarterLyrics(parsed.lyrics);
+        setLyricsList(mergedLyrics);
+        setLyricsId(parsed.activeLyricsId && mergedLyrics.some((item) => item.id === parsed.activeLyricsId)
+          ? parsed.activeLyricsId
+          : mergedLyrics[0].id);
+        setStyle({ ...DEFAULT_STYLE, ...(parsed.style || {}) });
+        if (Array.isArray(parsed.todayLyricsIds)) setTodayLyricsIds(parsed.todayLyricsIds);
+      } else if (parsed?.lyrics?.id && Array.isArray(parsed.lyrics.slides)) {
+        const incoming = parsed.lyrics;
+        setLyricsList((current) => {
+          const exists = current.some((item) => item.id === incoming.id);
+          return exists
+            ? current.map((item) => item.id === incoming.id ? incoming : item)
+            : [...current, incoming];
+        });
+        setLyricsId(incoming.id);
+        setSelectedIndex(0);
+        setLiveIndex(0);
+        setBlank(true);
+        if (parsed.style) setStyle({ ...DEFAULT_STYLE, ...parsed.style });
+      } else {
+        throw new Error('Unsupported PraiseLyrics file');
+      }
+      setSaveStatus(t.localLyricsOpened);
+    } catch (error) {
+      if (error?.name !== 'AbortError') setSaveStatus(t.localLyricsError);
+    }
+  }
 
   async function chooseLyricsFolder() {
     if (!window.showDirectoryPicker) {
@@ -933,6 +1059,7 @@ function ControlView() {
       </header>
 
       <div className="savebar">
+        <button className="secondary compact" onClick={openLocalLyrics}>📂 {t.openLocalLyrics}</button>
         <button className="secondary compact" onClick={chooseLyricsFolder}>📁 {t.chooseFolder}</button>
         <button className="primary compact" onClick={saveToFolderNow}>💾 {t.saveToFolder}</button>
         <button className="secondary compact" onClick={() => setShowToday(true)}>📅 {t.openToday} ({todayLyrics.length})</button>
