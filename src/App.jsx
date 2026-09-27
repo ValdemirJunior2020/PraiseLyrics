@@ -470,6 +470,7 @@ function ControlView() {
   const [installMessage, setInstallMessage] = useState('');
   const wallRef = useRef(null);
   const loadedRef = useRef(false);
+  const browserBackupReadyRef = useRef(false);
 
   const lyrics = lyricsList.find((item) => item.id === lyricsId) || lyricsList[0];
   const selectedSlide = lyrics?.slides?.[selectedIndex];
@@ -481,29 +482,35 @@ function ControlView() {
 
   useEffect(() => {
     const saved = readBrowserBackup();
-    if (!saved?.lyrics?.length) return;
-    const mergedLyrics = mergeStarterLyrics(saved.lyrics);
-    setLyricsList(mergedLyrics);
-    setLyricsId(saved.activeLyricsId && mergedLyrics.some((item) => item.id === saved.activeLyricsId)
-      ? saved.activeLyricsId
-      : mergedLyrics[0].id);
-    setStyle({ ...DEFAULT_STYLE, ...(saved.style || {}) });
-    if (Array.isArray(saved.todayLyricsIds)) setTodayLyricsIds(saved.todayLyricsIds);
+    if (saved?.lyrics?.length) {
+      const mergedLyrics = mergeStarterLyrics(saved.lyrics);
+      setLyricsList(mergedLyrics);
+      setLyricsId(saved.activeLyricsId && mergedLyrics.some((item) => item.id === saved.activeLyricsId)
+        ? saved.activeLyricsId
+        : mergedLyrics[0].id);
+      setStyle({ ...DEFAULT_STYLE, ...(saved.style || {}) });
+      if (Array.isArray(saved.todayLyricsIds)) setTodayLyricsIds(saved.todayLyricsIds);
+    }
+    browserBackupReadyRef.current = true;
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(BROWSER_BACKUP_KEY, JSON.stringify({
-        version: 1,
-        savedAt: new Date().toISOString(),
-        activeLyricsId: lyrics?.id || lyricsList[0]?.id || '',
-        lyrics: lyricsList,
-        style,
-        todayLyricsIds,
-      }));
-    } catch {
-      // Browser backup is best-effort; folder saving still works independently.
-    }
+    if (!browserBackupReadyRef.current) return undefined;
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(BROWSER_BACKUP_KEY, JSON.stringify({
+          version: 1,
+          savedAt: new Date().toISOString(),
+          activeLyricsId: lyrics?.id || lyricsList[0]?.id || '',
+          lyrics: lyricsList,
+          style,
+          todayLyricsIds,
+        }));
+      } catch {
+        // Browser backup is best-effort; folder saving still works independently.
+      }
+    }, 250);
+    return () => clearTimeout(timer);
   }, [lyricsList, lyrics?.id, style, todayLyricsIds]);
 
   useEffect(() => {
