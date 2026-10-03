@@ -1,0 +1,1 @@
+export default { id: 'starter-holy-forever-1', label: 'Verse 1', text: 'A thousand generations falling down in worship\nTo sing the song of ages to the Lamb\nAnd all who\u0027ve gone before us, and all who will believe\nWill sing the song of ages to the Lamb' };
