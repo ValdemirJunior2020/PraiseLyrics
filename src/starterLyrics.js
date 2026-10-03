@@ -49,6 +49,17 @@ export const STARTER_LYRICS = [
   makeLyrics('yes-i-will', 'Yes I Will', 'Vertical Worship'),
   makeLyrics('do-it-again', 'Do It Again', 'Elevation Worship'),
 
+  // Lorena Lecca - Saturday 10/3 setlist
+  makeLyrics('let-the-weight-of-your-glory-fall', 'Let the Weight of Your Glory Fall', ''),
+  makeLyrics('for-your-name-is-holy', 'For Your Name Is Holy', ''),
+  makeLyrics('holy', 'Holy', ''),
+  makeLyrics('you-are-holy', 'You Are Holy', ''),
+  makeLyrics('who-else-is-worthy', 'Who Else Is Worthy', ''),
+  makeLyrics('jesus-be-the-name', 'Jesus Be the Name', ''),
+  makeLyrics('worthy-it-all', 'Worthy It All', ''),
+  makeLyrics('show-me-your-glory', 'Show Me Your Glory', ''),
+  makeLyrics('show-me-your-face-lord', 'Show Me Your Face, Lord', ''),
+
   makeLyrics('bondade-de-deus', 'Bondade de Deus', 'Isaías Saad', 'pt'),
   makeLyrics('a-casa-e-sua', 'A Casa É Sua', 'Casa Worship', 'pt'),
   makeLyrics('lugar-secreto', 'Lugar Secreto', 'Gabriela Rocha', 'pt'),
