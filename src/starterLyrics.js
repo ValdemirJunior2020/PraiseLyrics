@@ -1,3 +1,6 @@
+import { LORENA_PART1 } from './lorenaLyricsPart1.js';
+import { LORENA_PART2 } from './lorenaLyricsPart2.js';
+
 const makeLyrics = (id, title, artist, language = 'en') => ({
   id: `starter-${id}`,
   title,
@@ -14,7 +17,6 @@ const makeLyrics = (id, title, artist, language = 'en') => ({
 
 export const STARTER_LYRICS = [
   makeLyrics('goodness-of-god', 'Goodness of God', 'Bethel Music / Jenn Johnson'),
-  makeLyrics('holy-forever', 'Holy Forever', 'Chris Tomlin'),
   makeLyrics('great-are-you-lord', 'Great Are You Lord', 'All Sons & Daughters'),
   makeLyrics('worthy-of-it-all', 'Worthy of It All', 'David Brymer / Ryan Hall'),
   makeLyrics('gratitude', 'Gratitude', 'Brandon Lake'),
@@ -50,9 +52,8 @@ export const STARTER_LYRICS = [
   makeLyrics('do-it-again', 'Do It Again', 'Elevation Worship'),
 
   // Lorena Lecca - Saturday 10/3 setlist
-  makeLyrics('let-the-weight-of-your-glory-fall', 'Let the Weight of Your Glory Fall', ''),
-  makeLyrics('for-your-name-is-holy', 'For Your Name Is Holy', ''),
-  makeLyrics('holy', 'Holy', ''),
+  ...LORENA_PART1,
+  ...LORENA_PART2,
   makeLyrics('you-are-holy', 'You Are Holy', ''),
   makeLyrics('who-else-is-worthy', 'Who Else Is Worthy', ''),
   makeLyrics('jesus-be-the-name', 'Jesus Be the Name', ''),
@@ -79,7 +80,22 @@ export const STARTER_LYRICS = [
 
 export function mergeStarterLyrics(existing = []) {
   const normalize = (value) => String(value || '').trim().toLocaleLowerCase();
-  const titles = new Set(existing.map((item) => normalize(item.title)));
+  const starterByTitle = new Map(STARTER_LYRICS.map((item) => [normalize(item.title), item]));
+
+  const upgraded = existing.map((item) => {
+    const starter = starterByTitle.get(normalize(item.title));
+    if (!starter) return item;
+
+    const existingHasText = Array.isArray(item.slides)
+      && item.slides.some((slide) => String(slide?.text || '').trim());
+
+    const starterHasText = Array.isArray(starter.slides)
+      && starter.slides.some((slide) => String(slide?.text || '').trim());
+
+    return !existingHasText && starterHasText ? starter : item;
+  });
+
+  const titles = new Set(upgraded.map((item) => normalize(item.title)));
   const missing = STARTER_LYRICS.filter((item) => !titles.has(normalize(item.title)));
-  return [...existing, ...missing];
+  return [...upgraded, ...missing];
 }
