@@ -1005,6 +1005,20 @@ function ControlView() {
     setImageUrl('');
   }
 
+  function sendSongSlide(song, index) {
+    if (!song?.slides?.[index]) return;
+    setLyricsId(song.id);
+    setSelectedIndex(index);
+    setLiveIndex(index);
+    setBlank(false);
+
+    if ('BroadcastChannel' in window) {
+      const channel = new BroadcastChannel(CHANNEL_NAME);
+      channel.postMessage(buildLivePayload(song, index, style, false));
+      channel.close();
+    }
+  }
+
   function makeLive(index) {
     if (!lyrics?.slides?.[index]) return;
     setSelectedIndex(index);
@@ -1332,6 +1346,7 @@ function ControlView() {
                   <span className="section-label">{t.todayLyrics}</span>
                   <h2>{language === 'pt' ? 'Todas as letras salvas para hoje' : "All today's saved lyrics"}</h2>
                   <small>{todayDate} · {todaySaveStatus || (language === 'pt' ? 'Escolha uma pasta com Criar Letras de Hoje' : "Choose a folder with Create Today's Lyrics")}</small>
+                  <div className="today-live-hint">{language === 'pt' ? 'Clique em qualquer verso abaixo para enviar direto ao telão.' : 'Click any verse below to send it directly to the big screen.'}</div>
                 </div>
                 <button className="secondary" onClick={() => setShowToday(false)}>{t.backToLibrary}</button>
               </div>
@@ -1341,15 +1356,34 @@ function ControlView() {
                     <div className="today-song-heading">
                       <span>{String(songIndex + 1).padStart(2, '0')}</span>
                       <h3>{song.title}</h3>
-                      <button className="secondary compact" onClick={() => openPlannedLyrics(song.id)}>{language === 'pt' ? 'Editar' : 'Edit'}</button>
+                      <button
+                        className="secondary compact"
+                        onClick={() => {
+                          openPlannedLyrics(song.id);
+                          setShowToday(false);
+                        }}
+                      >
+                        {language === 'pt' ? 'Controles' : 'Controls'}
+                      </button>
                     </div>
                     <div className="today-song-verses">
-                      {song.slides?.map((slide) => (
-                        <article key={slide.id} className="today-verse-block">
-                          <strong>{slide.label}</strong>
-                          <p>{slide.text}</p>
-                        </article>
-                      ))}
+                      {song.slides?.map((slide, slideIndex) => {
+                        const isLive = song.id === lyrics?.id && slideIndex === liveIndex && !blank;
+                        return (
+                          <button
+                            key={slide.id}
+                            type="button"
+                            className={`today-verse-block today-verse-send ${isLive ? 'today-verse-live' : ''}`}
+                            onClick={() => sendSongSlide(song, slideIndex)}
+                          >
+                            <div className="today-verse-label-row">
+                              <strong>{slide.label}</strong>
+                              <span>{isLive ? t.live : (language === 'pt' ? 'Enviar' : 'Send')}</span>
+                            </div>
+                            <p>{slide.text}</p>
+                          </button>
+                        );
+                      })}
                     </div>
                   </section>
                 ))}
