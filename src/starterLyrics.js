@@ -1,5 +1,10 @@
 import { LORENA_PART1 } from './lorenaLyricsPart1.js';
 import { LORENA_PART2 } from './lorenaLyricsPart2.js';
+import { IMMORTAL_INVISIBLE } from './immortalInvisible.js';
+import { ONLY_A_HOLY_GOD } from './onlyAHolyGod.js';
+import { JESUS_MESSIAH } from './jesusMessiah.js';
+import { LORD_HAVE_MERCY } from './lordHaveMercy.js';
+import { THE_LOVE_OF_GOD } from './theLoveOfGod.js';
 
 const makeLyrics = (id, title, artist, language = 'en') => ({
   id: `starter-${id}`,
@@ -16,6 +21,11 @@ const makeLyrics = (id, title, artist, language = 'en') => ({
 });
 
 export const STARTER_LYRICS = [
+  IMMORTAL_INVISIBLE,
+  ONLY_A_HOLY_GOD,
+  JESUS_MESSIAH,
+  LORD_HAVE_MERCY,
+  THE_LOVE_OF_GOD,
   makeLyrics('goodness-of-god', 'Goodness of God', 'Bethel Music / Jenn Johnson'),
   makeLyrics('great-are-you-lord', 'Great Are You Lord', 'All Sons & Daughters'),
   makeLyrics('worthy-of-it-all', 'Worthy of It All', 'David Brymer / Ryan Hall'),
