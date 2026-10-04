@@ -391,3 +391,34 @@ body:has(.display-root),
   font-size: 12px;
   text-align: center;
 }
+
+
+.add-today-mini {
+  justify-self: end;
+  align-self: end;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid #14532d;
+  background: #0f3d24;
+  color: #86efac;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+.add-today-mini:hover {
+  background: #14532d;
+  border-color: #22c55e;
+  color: #dcfce7;
+}
+.today-badge {
+  justify-self: end;
+  align-self: end;
+  color: #86efac !important;
+  font-size: 11px !important;
+  font-weight: 700;
+}
