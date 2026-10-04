@@ -459,6 +459,14 @@ function ControlView() {
       return [];
     }
   });
+  const [todayCreated, setTodayCreated] = useState(() => {
+    try {
+      return localStorage.getItem('praise-lyrics-today-created') === 'true' ||
+        JSON.parse(localStorage.getItem('praise-lyrics-today') || '[]').length > 0;
+    } catch {
+      return false;
+    }
+  });
   const [showToday, setShowToday] = useState(false);
   const [screenOptions, setScreenOptions] = useState([]);
   const [selectedScreenId, setSelectedScreenId] = useState('');
@@ -483,6 +491,10 @@ function ControlView() {
   }, [todayLyricsIds]);
 
   useEffect(() => {
+    localStorage.setItem('praise-lyrics-today-created', String(todayCreated));
+  }, [todayCreated]);
+
+  useEffect(() => {
     const saved = readBrowserBackup();
     if (saved?.lyrics?.length) {
       const mergedLyrics = mergeStarterLyrics(saved.lyrics);
@@ -492,6 +504,8 @@ function ControlView() {
         : mergedLyrics[0].id);
       setStyle({ ...DEFAULT_STYLE, ...(saved.style || {}) });
       if (Array.isArray(saved.todayLyricsIds)) setTodayLyricsIds(saved.todayLyricsIds);
+      if (typeof saved.todayCreated === 'boolean') setTodayCreated(saved.todayCreated);
+      else if (Array.isArray(saved.todayLyricsIds) && saved.todayLyricsIds.length) setTodayCreated(true);
     }
     browserBackupReadyRef.current = true;
   }, []);
@@ -507,13 +521,14 @@ function ControlView() {
           lyrics: lyricsList,
           style,
           todayLyricsIds,
+          todayCreated,
         }));
       } catch {
         // Browser backup is best-effort; folder saving still works independently.
       }
     }, 250);
     return () => clearTimeout(timer);
-  }, [lyricsList, lyrics?.id, style, todayLyricsIds]);
+  }, [lyricsList, lyrics?.id, style, todayLyricsIds, todayCreated]);
 
   useEffect(() => {
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone;
@@ -553,6 +568,12 @@ function ControlView() {
           if (browserToday === null && Array.isArray(saved.todayLyricsIds)) {
             setTodayLyricsIds(saved.todayLyricsIds);
           }
+          const browserTodayCreated = localStorage.getItem('praise-lyrics-today-created');
+          if (browserTodayCreated === null && typeof saved.todayCreated === 'boolean') {
+            setTodayCreated(saved.todayCreated);
+          } else if (browserTodayCreated === null && Array.isArray(saved.todayLyricsIds) && saved.todayLyricsIds.length) {
+            setTodayCreated(true);
+          }
         }
         setSaveStatus(COPY[language].folderReady);
       } catch {
@@ -576,6 +597,7 @@ function ControlView() {
           lyrics: lyricsList,
           style,
           todayLyricsIds,
+          todayCreated,
         });
         setSaveStatus(`${t.saved} ✓`);
       } catch {
@@ -584,7 +606,7 @@ function ControlView() {
       }
     }, 650);
     return () => clearTimeout(timer);
-  }, [lyricsList, lyrics?.id, style, todayLyricsIds, directoryHandle, folderReady, t.saved, t.saving, t.saveError]);
+  }, [lyricsList, lyrics?.id, style, todayLyricsIds, todayCreated, directoryHandle, folderReady, t.saved, t.saving, t.saveError]);
 
   useEffect(() => {
     setImageUrl(selectedSlide?.backgroundImage || '');
@@ -793,12 +815,19 @@ function ControlView() {
     }
   }
 
+  function createTodayLyrics() {
+    setTodayCreated(true);
+    setShowToday(true);
+  }
+
   function addCurrentToToday() {
     if (!lyrics) return;
+    setTodayCreated(true);
     setTodayLyricsIds((current) => current.includes(lyrics.id) ? current : [...current, lyrics.id]);
   }
 
   function addSongToToday(id) {
+    setTodayCreated(true);
     setTodayLyricsIds((current) => current.includes(id) ? current : [...current, id]);
   }
 
@@ -1074,7 +1103,7 @@ function ControlView() {
         <button className="secondary compact" onClick={openLocalLyrics}>📂 {t.openLocalLyrics}</button>
         <button className="secondary compact" onClick={chooseLyricsFolder}>📁 {t.chooseFolder}</button>
         <button className="primary compact" onClick={saveToFolderNow}>💾 {t.saveToFolder}</button>
-        <button className="primary compact create-today-button" onClick={() => setShowToday(true)}>📅 {t.createToday}</button>
+        <button className="primary compact create-today-button" onClick={createTodayLyrics}>📅 {todayCreated ? t.openToday : t.createToday}</button>
         <button className="secondary compact" onClick={() => setShowToday(true)}>📖 {t.openToday} ({todayLyrics.length})</button>
         <span className={folderReady ? 'save-state ready' : 'save-state'}>{saveStatus}</span>
       </div>
@@ -1152,7 +1181,7 @@ function ControlView() {
               </div>
 
               <div className="sidebar-actions">
-                <button className="primary full create-today-button" onClick={() => setShowToday(true)}>📅 {t.createToday}</button>
+                <button className="primary full create-today-button" onClick={createTodayLyrics}>📅 {todayCreated ? t.openToday : t.createToday}</button>
                 <button className="primary full" onClick={addCurrentToToday} disabled={!lyrics || todayLyricsIds.includes(lyrics.id)}>＋ {t.addToToday}</button>
                 <button className="secondary full" onClick={() => setShowToday(true)}>📖 {t.openToday} ({todayLyrics.length})</button>
                 <button className="secondary full" onClick={() => setShowLyricsEditor(true)}>{t.renameLyrics}</button>
