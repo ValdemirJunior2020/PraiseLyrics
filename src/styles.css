@@ -236,3 +236,81 @@ input[type="range"] { accent-color: #3b82f6; padding: 0; border: 0; background: 
   .control-grid, .background-links { grid-template-columns: 1fr; }
   .verse-card { flex-basis: 285px; }
 }
+
+
+/* Today's Lyrics combined service view */
+.todays-lyrics-panel {
+  min-height: 70vh;
+}
+.todays-lyrics-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.today-song-block {
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 16px;
+  background: rgba(255,255,255,.025);
+  overflow: hidden;
+}
+.today-song-heading {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.today-song-heading > span {
+  opacity: .5;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.today-song-heading h3 {
+  margin: 0;
+  font-size: 20px;
+}
+.today-song-verses {
+  display: flex;
+  flex-direction: column;
+}
+.today-verse-block {
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.055);
+}
+.today-verse-block:last-child {
+  border-bottom: 0;
+}
+.today-verse-block strong {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 12px;
+  opacity: .65;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.today-verse-block p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+
+@media (max-width: 720px) {
+  .today-song-heading {
+    grid-template-columns: auto 1fr;
+  }
+  .today-song-heading .compact {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The display page itself must always fill the browser viewport. */
+html:has(.display-root),
+body:has(.display-root),
+#root:has(.display-root) {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+}
