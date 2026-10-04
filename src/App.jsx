@@ -1148,75 +1148,50 @@ function ControlView() {
         <aside className="sidebar panel">
           <div className="section-head">
             <div>
-              <span className="section-label">{showToday ? t.todayLyrics : t.library}</span>
-              <h2>{showToday ? t.lyricsCount(todayLyrics.length) : t.lyricsCount(lyricsList.length)}</h2>
+              <span className="section-label">{t.library}</span>
+              <h2>{t.lyricsCount(lyricsList.length)}</h2>
             </div>
-            {showToday
-              ? <button className="icon-button" onClick={() => setShowToday(false)} title={t.backToLibrary}>←</button>
-              : <button className="icon-button" onClick={newLyrics} title={t.newLyrics}>＋</button>}
+            <button className="icon-button" onClick={newLyrics} title={t.newLyrics}>＋</button>
           </div>
 
-          {showToday ? (
-            <>
-              <div className="song-list">
-                {todayLyrics.map((item, index) => (
-                  <div key={item.id} className={`song-item lyrics-item ${item.id === lyrics.id ? 'selected' : ''}`}>
-                    <button className="lyrics-name-button" onClick={() => openPlannedLyrics(item.id)}>
-                      <strong>{index + 1}. {item.title}</strong>
-                    </button>
-                    <button className="lyrics-open-button" onClick={() => openPlannedLyrics(item.id)}>
-                      {language === 'pt' ? 'Abrir' : 'Open'}
-                    </button>
-                    <button className="ghost" onClick={() => removeSongFromToday(item.id)}>{t.removeFromToday}</button>
-                  </div>
-                ))}
-                {!todayLyrics.length && <div className="tip-box">{t.todayEmpty}</div>}
+          <div className="song-list">
+            {lyricsList.map((item) => (
+              <div key={item.id} className={`song-item lyrics-item ${item.id === lyrics.id ? 'selected' : ''}`}>
+                <button
+                  className="lyrics-name-button"
+                  title={t.renameLyrics}
+                  onClick={() => {
+                    setLyricsId(item.id);
+                    setShowToday(false);
+                    setShowLyricsEditor(true);
+                  }}
+                >
+                  <strong>{item.title}</strong><span className="rename-mark">✎</span>
+                </button>
+                <button
+                  className="lyrics-open-button"
+                  onClick={() => {
+                    setLyricsId(item.id);
+                    setShowToday(false);
+                    setLiveIndex(0);
+                    setSelectedIndex(0);
+                    setBlank(true);
+                  }}
+                >
+                  {item.slides.length} {language === 'pt' ? (item.slides.length === 1 ? 'tela' : 'telas') : (item.slides.length === 1 ? 'slide' : 'slides')}
+                </button>
+                {todayLyricsIds.includes(item.id) && <span className="today-badge">✓ Today</span>}
               </div>
-              <div className="sidebar-actions">
-                <button className="secondary full" onClick={() => setShowToday(false)}>{t.backToLibrary}</button>
-                <button className="ghost full" disabled={!todayLyrics.length} onClick={clearTodayLyrics}>{t.clearToday}</button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="song-list">
-                {lyricsList.map((item) => (
-                  <div key={item.id} className={`song-item lyrics-item ${item.id === lyrics.id ? 'selected' : ''}`}>
-                    <button
-                      className="lyrics-name-button"
-                      title={t.renameLyrics}
-                      onClick={() => {
-                        setLyricsId(item.id);
-                        setShowLyricsEditor(true);
-                      }}
-                    >
-                      <strong>{item.title}</strong><span className="rename-mark">✎</span>
-                    </button>
-                    <button
-                      className="lyrics-open-button"
-                      onClick={() => {
-                        setLyricsId(item.id);
-                        setLiveIndex(0);
-                        setSelectedIndex(0);
-                        setBlank(true);
-                      }}
-                    >
-                      {item.slides.length} {language === 'pt' ? (item.slides.length === 1 ? 'tela' : 'telas') : (item.slides.length === 1 ? 'slide' : 'slides')}
-                    </button>
-                    {todayLyricsIds.includes(item.id) && <span className="today-badge">✓ Today</span>}
-                  </div>
-                ))}
-              </div>
+            ))}
+          </div>
 
-              <div className="sidebar-actions">
-                <button className="primary full create-today-button" onClick={createTodayLyrics}>📅 {todayCreated ? t.openToday : t.createToday}</button>
-                <button className="primary full" onClick={addCurrentToToday} disabled={!lyrics || todayLyricsIds.includes(lyrics.id)}>＋ {t.addToToday}</button>
-                <button className="secondary full" onClick={() => setShowToday(true)}>📖 {t.openToday} ({todayLyrics.length})</button>
-                <button className="secondary full" onClick={() => setShowLyricsEditor(true)}>{t.renameLyrics}</button>
-                <button className="ghost full" disabled={lyricsList.length === 1} onClick={deleteLyrics}>{t.deleteLyrics}</button>
-              </div>
-            </>
-          )}
+          <div className="sidebar-actions">
+            <button className="primary full create-today-button" onClick={createTodayLyrics}>📅 {todayCreated ? t.openToday : t.createToday}</button>
+            <button className="primary full" onClick={addCurrentToToday} disabled={!lyrics || todayLyricsIds.includes(lyrics.id)}>＋ {t.addToToday}</button>
+            <button className="secondary full" onClick={() => setShowToday(true)}>📖 {t.openToday} ({todayLyrics.length})</button>
+            <button className="secondary full" onClick={() => setShowLyricsEditor(true)}>{t.renameLyrics}</button>
+            <button className="ghost full" disabled={lyricsList.length === 1} onClick={deleteLyrics}>{t.deleteLyrics}</button>
+          </div>
 
           <div className="screen-box">
             <span className="section-label">{t.tvWall}</span>
