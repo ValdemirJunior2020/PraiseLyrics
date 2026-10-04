@@ -1203,9 +1203,7 @@ function ControlView() {
                     >
                       {item.slides.length} {language === 'pt' ? (item.slides.length === 1 ? 'tela' : 'telas') : (item.slides.length === 1 ? 'slide' : 'slides')}
                     </button>
-                    <button className="ghost" disabled={todayLyricsIds.includes(item.id)} onClick={() => addSongToToday(item.id)}>
-                      {todayLyricsIds.includes(item.id) ? '✓' : '＋'} {t.addToToday}
-                    </button>
+                    {todayLyricsIds.includes(item.id) && <span className="today-badge">✓ Today</span>}
                   </div>
                 ))}
               </div>
