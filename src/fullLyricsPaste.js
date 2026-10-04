@@ -1,4 +1,4 @@
-const SECTION_RE = /^\s*\[?\s*(?:(verse|verso)\s*(\d+)?|(chorus|refr[aã]o|coro)|(pre[-\s]?chorus|pr[eé][ -]?refr[aã]o)|(bridge|ponte)|(intro|introdu[cç][aã]o)|(outro|final)|(tag)|(interlude|interl[uú]dio)|(vamp))(?:\s*:\s*[^\]]+)?\s*\]?\s*$/i;
+const SECTION_RE = /^\s*\[?\s*(?:(verse|verso)\s*(\d+)?|(chorus|refr[aã]o|coro)|(pre[-\s]?chorus|pr[eé][ -]?refr[aã]o)|(bridge|ponte)|(intro|introdu[cç][aã]o)|(outro|final)|(tag)|(interlude|interl[uú]dio)|(vamp))(?:\s*:\s*[^\]]*)?\s*\]?\s*$/i;
 const MARKDOWN_LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
 
 function cleanPastedLine(line) {
@@ -75,7 +75,20 @@ export function parseFullLyrics(input, language = 'en') {
     });
   }
 
-  const blocks = text.split(/\n\s*\n+/).map((block) => block.trim()).filter(Boolean);
+  let blocks = text.split(/\n\s*\n+/).map((block) => block.trim()).filter(Boolean);
+
+  // Many lyrics sites copy as one continuous block with no empty lines.
+  // In that case, create readable worship slides instead of one giant slide.
+  if (blocks.length === 1) {
+    const cleanLines = blocks[0].split('\n').map((line) => line.trim()).filter(Boolean);
+    const maxLinesPerSlide = 4;
+    const chunked = [];
+    for (let i = 0; i < cleanLines.length; i += maxLinesPerSlide) {
+      chunked.push(cleanLines.slice(i, i + maxLinesPerSlide).join('\n'));
+    }
+    blocks = chunked;
+  }
+
   return blocks.map((block, index) => ({
     label: `${language === 'pt' ? 'Verso' : 'Verse'} ${index + 1}`,
     text: block,
