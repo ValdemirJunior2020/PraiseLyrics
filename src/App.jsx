@@ -590,9 +590,11 @@ function ControlView() {
         ? saved.activeLyricsId
         : mergedLyrics[0].id);
       setStyle({ ...DEFAULT_STYLE, ...(saved.style || {}) });
-      if (Array.isArray(saved.todayLyricsIds)) setTodayLyricsIds(saved.todayLyricsIds);
-      if (typeof saved.todayCreated === 'boolean') setTodayCreated(saved.todayCreated);
-      else if (Array.isArray(saved.todayLyricsIds) && saved.todayLyricsIds.length) setTodayCreated(true);
+      if (saved.todayDate === todayDate && Array.isArray(saved.todayLyricsIds)) {
+        setTodayLyricsIds(saved.todayLyricsIds);
+        if (typeof saved.todayCreated === 'boolean') setTodayCreated(saved.todayCreated);
+        else if (saved.todayLyricsIds.length) setTodayCreated(true);
+      }
     }
     browserBackupReadyRef.current = true;
   }, []);
@@ -609,13 +611,14 @@ function ControlView() {
           style,
           todayLyricsIds,
           todayCreated,
+          todayDate,
         }));
       } catch {
         // Browser backup is best-effort; folder saving still works independently.
       }
     }, 250);
     return () => clearTimeout(timer);
-  }, [lyricsList, lyrics?.id, style, todayLyricsIds, todayCreated]);
+  }, [lyricsList, lyrics?.id, style, todayLyricsIds, todayCreated, todayDate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -661,13 +664,13 @@ function ControlView() {
           setLyricsId(saved.activeLyricsId || mergedLyrics[0].id);
           setStyle({ ...DEFAULT_STYLE, ...(saved.style || {}) });
           const browserToday = localStorage.getItem('praise-lyrics-today');
-          if (browserToday === null && Array.isArray(saved.todayLyricsIds)) {
+          if (saved.todayDate === todayDate && browserToday === null && Array.isArray(saved.todayLyricsIds)) {
             setTodayLyricsIds(saved.todayLyricsIds);
           }
           const browserTodayCreated = localStorage.getItem('praise-lyrics-today-created');
-          if (browserTodayCreated === null && typeof saved.todayCreated === 'boolean') {
+          if (saved.todayDate === todayDate && browserTodayCreated === null && typeof saved.todayCreated === 'boolean') {
             setTodayCreated(saved.todayCreated);
-          } else if (browserTodayCreated === null && Array.isArray(saved.todayLyricsIds) && saved.todayLyricsIds.length) {
+          } else if (saved.todayDate === todayDate && browserTodayCreated === null && Array.isArray(saved.todayLyricsIds) && saved.todayLyricsIds.length) {
             setTodayCreated(true);
           }
         }
@@ -694,6 +697,7 @@ function ControlView() {
           style,
           todayLyricsIds,
           todayCreated,
+          todayDate,
         });
         setSaveStatus(`${t.saved} ✓`);
       } catch {
@@ -1239,7 +1243,7 @@ function ControlView() {
         <button className="secondary compact" onClick={openLocalLyrics}>📂 {t.openLocalLyrics}</button>
         <button className="secondary compact" onClick={chooseLyricsFolder}>📁 {t.chooseFolder}</button>
         <button className="primary compact" onClick={saveToFolderNow}>💾 {t.saveToFolder}</button>
-        <button className="primary compact create-today-button" onClick={() => todayCreated ? setShowToday(true) : createTodayLyrics()}>📅 {todayCreated ? t.openToday : t.createToday}</button>
+        <button className="primary compact create-today-button" onClick={() => (todayCreated && todayDirectoryHandle) ? setShowToday(true) : createTodayLyrics()}>📅 {(todayCreated && todayDirectoryHandle) ? t.openToday : t.createToday}</button>
         <button className="secondary compact" onClick={() => setShowToday(true)}>📖 {t.openToday} ({todayLyrics.length})</button>
         <span className={folderReady ? 'save-state ready' : 'save-state'}>{saveStatus}</span>
       </div>
@@ -1303,7 +1307,7 @@ function ControlView() {
           </div>
 
           <div className="sidebar-actions">
-            <button className="primary full create-today-button" onClick={() => todayCreated ? setShowToday(true) : createTodayLyrics()}>📅 {todayCreated ? t.openToday : t.createToday}</button>
+            <button className="primary full create-today-button" onClick={() => (todayCreated && todayDirectoryHandle) ? setShowToday(true) : createTodayLyrics()}>📅 {(todayCreated && todayDirectoryHandle) ? t.openToday : t.createToday}</button>
             <button className="primary full" onClick={addCurrentToToday} disabled={!lyrics || todayLyricsIds.includes(lyrics.id)}>＋ {t.addToToday}</button>
             <button className="secondary full" onClick={() => setShowToday(true)}>📖 {t.openToday} ({todayLyrics.length})</button>
             <button className="secondary full" onClick={() => setShowLyricsEditor(true)}>{t.renameLyrics}</button>
