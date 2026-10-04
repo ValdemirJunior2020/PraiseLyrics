@@ -406,7 +406,7 @@ function DisplayView() {
           className="display-lyrics"
           style={{
             color: style.textColor,
-            fontSize: `clamp(36px, ${style.fontSize / 18}vw, ${style.fontSize * 1.3}px)`,
+            fontSize: `clamp(24px, ${style.fontSize / 14}vw, ${style.fontSize * 1.8}px)`,
             fontFamily: style.fontFamily,
             fontWeight: style.fontWeight,
             textAlign: style.textAlign,
@@ -474,7 +474,7 @@ function ControlView() {
 
   const lyrics = lyricsList.find((item) => item.id === lyricsId) || lyricsList[0];
   const selectedSlide = lyrics?.slides?.[selectedIndex];
-  const todayLyrics = lyricsList.filter((item) => todayLyricsIds.includes(item.id));
+  const todayLyrics = todayLyricsIds.map((id) => lyricsList.find((item) => item.id === id)).filter(Boolean);
 
   useEffect(() => {
     localStorage.setItem('praise-lyrics-today', JSON.stringify(todayLyricsIds));
@@ -935,11 +935,14 @@ function ControlView() {
     }
 
     const features = selected
-      ? `popup=yes,left=${selected.left},top=${selected.top},width=${selected.width},height=${selected.height}`
-      : 'popup=yes,width=1280,height=720';
+      ? `popup=yes,left=${selected.left},top=${selected.top},width=${selected.width},height=${selected.height},toolbar=no,location=no,status=no,menubar=no,scrollbars=no,resizable=yes`
+      : 'popup=yes,width=1280,height=720,toolbar=no,location=no,status=no,menubar=no,scrollbars=no,resizable=yes';
 
     const displayUrl = `${window.location.origin}${import.meta.env.BASE_URL}?display=1`;
-    wallRef.current = window.open(displayUrl, 'PraiseLyricsWall', features);
+    if (wallRef.current && !wallRef.current.closed) {
+      try { wallRef.current.close(); } catch {}
+    }
+    wallRef.current = window.open(displayUrl, '_blank', features);
 
     if (!wallRef.current) {
       setStatus(t.wallBlocked);
@@ -1165,6 +1168,38 @@ function ControlView() {
         </aside>
 
         <section className="main-column">
+          {showToday ? (
+            <div className="panel todays-lyrics-panel">
+              <div className="section-head wide">
+                <div>
+                  <span className="section-label">{t.todayLyrics}</span>
+                  <h2>{language === 'pt' ? 'Todas as letras salvas para hoje' : "All today's saved lyrics"}</h2>
+                </div>
+                <button className="secondary" onClick={() => setShowToday(false)}>{t.backToLibrary}</button>
+              </div>
+              <div className="todays-lyrics-stack">
+                {todayLyrics.map((song, songIndex) => (
+                  <section key={song.id} className="today-song-block">
+                    <div className="today-song-heading">
+                      <span>{String(songIndex + 1).padStart(2, '0')}</span>
+                      <h3>{song.title}</h3>
+                      <button className="secondary compact" onClick={() => openPlannedLyrics(song.id)}>{language === 'pt' ? 'Editar' : 'Edit'}</button>
+                    </div>
+                    <div className="today-song-verses">
+                      {song.slides?.map((slide) => (
+                        <article key={slide.id} className="today-verse-block">
+                          <strong>{slide.label}</strong>
+                          <p>{slide.text}</p>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+                {!todayLyrics.length && <div className="tip-box">{t.todayEmpty}</div>}
+              </div>
+            </div>
+          ) : (
+          <>
           <div className="panel verses-panel">
             <div className="section-head wide">
               <div>
@@ -1231,7 +1266,7 @@ function ControlView() {
 
               <div className="control-grid">
                 <label>{t.textColor}<input type="color" value={style.textColor} onChange={(event) => setStyle((current) => ({ ...current, textColor: event.target.value }))} /></label>
-                <label>{t.fontSize}<input type="range" min="38" max="140" value={style.fontSize} onChange={(event) => setStyle((current) => ({ ...current, fontSize: Number(event.target.value) }))} /><span>{style.fontSize}px</span></label>
+                <label>{t.fontSize}<input type="range" min="24" max="320" value={style.fontSize} onChange={(event) => setStyle((current) => ({ ...current, fontSize: Number(event.target.value) }))} /><span>{style.fontSize}px</span></label>
                 <label>{t.overlay}<input type="range" min="0" max="0.85" step="0.05" value={style.overlay} onChange={(event) => setStyle((current) => ({ ...current, overlay: Number(event.target.value) }))} /><span>{Math.round(style.overlay * 100)}%</span></label>
                 <label>{t.width}<input type="range" min="50" max="96" value={style.maxWidth} onChange={(event) => setStyle((current) => ({ ...current, maxWidth: Number(event.target.value) }))} /><span>{style.maxWidth}%</span></label>
                 <label>{t.font}<select value={style.fontFamily} onChange={(event) => setStyle((current) => ({ ...current, fontFamily: event.target.value }))}><option value="Arial, Helvetica, sans-serif">Arial</option><option value="Georgia, serif">Georgia</option><option value="Verdana, sans-serif">Verdana</option><option value="Trebuchet MS, sans-serif">Trebuchet</option><option value="system-ui, sans-serif">System</option></select></label>
@@ -1257,6 +1292,8 @@ function ControlView() {
               <div className="tip-box"><strong>{t.howWorks}</strong> {t.howWorksText}</div>
             </div>
           </div>
+          </>
+          )}
         </section>
       </div>
 
