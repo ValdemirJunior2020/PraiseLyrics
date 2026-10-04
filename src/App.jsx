@@ -87,6 +87,7 @@ const COPY = {
     chooseFolder: 'Choose Lyrics Folder',
     saveToFolder: 'Save Current Lyrics',
     todayLyrics: 'Lyrics for Today',
+    createToday: "Create Today's Lyrics",
     openToday: 'Open Lyrics for Today',
     addToToday: 'Add to Today',
     removeFromToday: 'Remove',
@@ -185,6 +186,7 @@ const COPY = {
     chooseFolder: 'Escolher Pasta das Letras',
     saveToFolder: 'Salvar Letra Atual',
     todayLyrics: 'Letras de Hoje',
+    createToday: 'Criar Letras de Hoje',
     openToday: 'Abrir Letras de Hoje',
     addToToday: 'Adicionar a Hoje',
     removeFromToday: 'Remover',
@@ -1072,7 +1074,8 @@ function ControlView() {
         <button className="secondary compact" onClick={openLocalLyrics}>📂 {t.openLocalLyrics}</button>
         <button className="secondary compact" onClick={chooseLyricsFolder}>📁 {t.chooseFolder}</button>
         <button className="primary compact" onClick={saveToFolderNow}>💾 {t.saveToFolder}</button>
-        <button className="secondary compact" onClick={() => setShowToday(true)}>📅 {t.openToday} ({todayLyrics.length})</button>
+        <button className="primary compact create-today-button" onClick={() => setShowToday(true)}>📅 {t.createToday}</button>
+        <button className="secondary compact" onClick={() => setShowToday(true)}>📖 {t.openToday} ({todayLyrics.length})</button>
         <span className={folderReady ? 'save-state ready' : 'save-state'}>{saveStatus}</span>
       </div>
 
@@ -1149,8 +1152,9 @@ function ControlView() {
               </div>
 
               <div className="sidebar-actions">
-                <button className="primary full" onClick={addCurrentToToday} disabled={!lyrics || todayLyricsIds.includes(lyrics.id)}>📅 {t.addToToday}</button>
-                <button className="secondary full" onClick={() => setShowToday(true)}>📅 {t.openToday} ({todayLyrics.length})</button>
+                <button className="primary full create-today-button" onClick={() => setShowToday(true)}>📅 {t.createToday}</button>
+                <button className="primary full" onClick={addCurrentToToday} disabled={!lyrics || todayLyricsIds.includes(lyrics.id)}>＋ {t.addToToday}</button>
+                <button className="secondary full" onClick={() => setShowToday(true)}>📖 {t.openToday} ({todayLyrics.length})</button>
                 <button className="secondary full" onClick={() => setShowLyricsEditor(true)}>{t.renameLyrics}</button>
                 <button className="ghost full" disabled={lyricsList.length === 1} onClick={deleteLyrics}>{t.deleteLyrics}</button>
               </div>
