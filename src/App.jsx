@@ -1180,7 +1180,18 @@ function ControlView() {
                 >
                   {item.slides.length} {language === 'pt' ? (item.slides.length === 1 ? 'tela' : 'telas') : (item.slides.length === 1 ? 'slide' : 'slides')}
                 </button>
-                {todayLyricsIds.includes(item.id) && <span className="today-badge">✓ Today</span>}
+                {todayLyricsIds.includes(item.id) ? (
+                  <span className="today-badge">✓ Today</span>
+                ) : (
+                  <button
+                    className="add-today-mini"
+                    title={t.addToToday}
+                    aria-label={`${t.addToToday}: ${item.title}`}
+                    onClick={() => addSongToToday(item.id)}
+                  >
+                    ＋
+                  </button>
+                )}
               </div>
             ))}
           </div>
