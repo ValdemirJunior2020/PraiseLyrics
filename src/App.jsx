@@ -63,6 +63,7 @@ const DEFAULT_STYLE = {
   lineHeight: 1.22,
   textShadow: true,
   maxWidth: 88,
+  verticalOffset: 0,
 };
 
 const COPY = {
@@ -107,7 +108,7 @@ const COPY = {
     copy: 'Copy',
     delete: 'Delete',
     addFirstVerse: 'Add the first verse',
-    keyboard: 'Keyboard: ← Previous · → Next · Space Blank/Show · 1–9 jump directly to a slide',
+    keyboard: 'Keyboard: ← Previous · → Next · ↑ Move lyrics up · ↓ Move lyrics down · Space Blank/Show · 1–9 jump directly to a slide',
     appearance: 'Wall Appearance',
     backgroundFor: 'Background for',
     selectedVerse: 'Selected Verse',
@@ -117,6 +118,10 @@ const COPY = {
     width: 'Width',
     font: 'Font',
     alignment: 'Alignment',
+    verticalPosition: 'Vertical position',
+    moveUp: 'Move Up',
+    moveDown: 'Move Down',
+    resetPosition: 'Center',
     left: 'Left',
     center: 'Center',
     right: 'Right',
@@ -206,7 +211,7 @@ const COPY = {
     copy: 'Copiar',
     delete: 'Excluir',
     addFirstVerse: 'Adicionar o primeiro verso',
-    keyboard: 'Teclado: ← Anterior · → Próxima · Espaço Apagar/Mostrar · 1–9 ir direto para uma tela',
+    keyboard: 'Teclado: ← Anterior · → Próxima · ↑ Subir letra · ↓ Descer letra · Espaço Apagar/Mostrar · 1–9 ir direto para uma tela',
     appearance: 'Aparência do Telão',
     backgroundFor: 'Fundo para',
     selectedVerse: 'Verso Selecionado',
@@ -216,6 +221,10 @@ const COPY = {
     width: 'Largura',
     font: 'Fonte',
     alignment: 'Alinhamento',
+    verticalPosition: 'Posição vertical',
+    moveUp: 'Subir',
+    moveDown: 'Descer',
+    resetPosition: 'Centralizar',
     left: 'Esquerda',
     center: 'Centro',
     right: 'Direita',
@@ -414,6 +423,8 @@ function DisplayView() {
             textAlign: style.textAlign,
             lineHeight: style.lineHeight,
             width: `${style.maxWidth}vw`,
+            transform: `translateY(${Number(style.verticalOffset || 0)}vh)`,
+            transition: 'transform 120ms ease-out',
             textShadow: style.textShadow ? '0 4px 18px rgba(0,0,0,.95), 0 1px 3px rgba(0,0,0,1)' : 'none',
           }}
         >
@@ -646,6 +657,12 @@ function ControlView() {
       } else if (event.key === 'ArrowLeft') {
         event.preventDefault();
         goPrevious();
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        moveLyricsVertical(-4);
+      } else if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        moveLyricsVertical(4);
       } else if (event.code === 'Space') {
         event.preventDefault();
         toggleBlank();
@@ -882,6 +899,17 @@ function ControlView() {
     setLiveIndex(index);
     setBlank(false);
     sendLive(index, false, style);
+  }
+
+  function moveLyricsVertical(delta) {
+    setStyle((current) => ({
+      ...current,
+      verticalOffset: Math.max(-45, Math.min(45, Number(current.verticalOffset || 0) + delta)),
+    }));
+  }
+
+  function resetLyricsVertical() {
+    setStyle((current) => ({ ...current, verticalOffset: 0 }));
   }
 
   function goNext() {
@@ -1242,6 +1270,9 @@ function ControlView() {
               <div className="mini-actions">
                 <button className="secondary" onClick={goPrevious}>← {t.previous}</button>
                 <button className="secondary" onClick={goNext}>{t.next} →</button>
+                <button className="secondary" onClick={() => moveLyricsVertical(-4)}>↑ {t.moveUp}</button>
+                <button className="secondary" onClick={() => moveLyricsVertical(4)}>↓ {t.moveDown}</button>
+                <button className="ghost" onClick={resetLyricsVertical}>{t.resetPosition}</button>
                 <button className="primary" onClick={addSlide}>＋ {t.addVerse}</button>
               </div>
             </div>
@@ -1302,6 +1333,7 @@ function ControlView() {
                 <label>{t.fontSize}<input type="range" min="24" max="320" value={style.fontSize} onChange={(event) => setStyle((current) => ({ ...current, fontSize: Number(event.target.value) }))} /><span>{style.fontSize}px</span></label>
                 <label>{t.overlay}<input type="range" min="0" max="0.85" step="0.05" value={style.overlay} onChange={(event) => setStyle((current) => ({ ...current, overlay: Number(event.target.value) }))} /><span>{Math.round(style.overlay * 100)}%</span></label>
                 <label>{t.width}<input type="range" min="50" max="96" value={style.maxWidth} onChange={(event) => setStyle((current) => ({ ...current, maxWidth: Number(event.target.value) }))} /><span>{style.maxWidth}%</span></label>
+                <label>{t.verticalPosition}<input type="range" min="-45" max="45" step="1" value={style.verticalOffset || 0} onChange={(event) => setStyle((current) => ({ ...current, verticalOffset: Number(event.target.value) }))} /><span>{style.verticalOffset || 0}</span></label>
                 <label>{t.font}<select value={style.fontFamily} onChange={(event) => setStyle((current) => ({ ...current, fontFamily: event.target.value }))}><option value="Arial, Helvetica, sans-serif">Arial</option><option value="Georgia, serif">Georgia</option><option value="Verdana, sans-serif">Verdana</option><option value="Trebuchet MS, sans-serif">Trebuchet</option><option value="system-ui, sans-serif">System</option></select></label>
                 <label>{t.alignment}<select value={style.textAlign} onChange={(event) => setStyle((current) => ({ ...current, textAlign: event.target.value }))}><option value="left">{t.left}</option><option value="center">{t.center}</option><option value="right">{t.right}</option></select></label>
               </div>
