@@ -6,7 +6,20 @@ const LIBRARY_FILE = 'PraiseLyrics-Library.json';
 const HANDLE_DB = 'praise-lyrics-permissions';
 const HANDLE_STORE = 'handles';
 const HANDLE_KEY = 'lyrics-folder';
+const TODAY_HANDLE_KEY = 'today-lyrics-folder';
 const BROWSER_BACKUP_KEY = 'praise-lyrics-browser-backup-v1';
+
+function localDateKey() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function todayLyricsFileName(dateKey = localDateKey()) {
+  return `Todays-Lyrics-${dateKey}.json`;
+}
 
 const DEFAULT_GRADIENTS = [
   { name: 'Midnight', value: 'linear-gradient(135deg,#020617 0%,#111827 45%,#1e293b 100%)' },
@@ -286,12 +299,12 @@ function openHandleDb() {
   });
 }
 
-async function getStoredDirectoryHandle() {
+async function getStoredHandle(key) {
   try {
     const db = await openHandleDb();
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(HANDLE_STORE, 'readonly');
-      const request = tx.objectStore(HANDLE_STORE).get(HANDLE_KEY);
+      const request = tx.objectStore(HANDLE_STORE).get(key);
       request.onsuccess = () => resolve(request.result || null);
       request.onerror = () => reject(request.error);
     });
@@ -300,14 +313,30 @@ async function getStoredDirectoryHandle() {
   }
 }
 
-async function storeDirectoryHandle(handle) {
+async function storeHandle(key, handle) {
   const db = await openHandleDb();
   await new Promise((resolve, reject) => {
     const tx = db.transaction(HANDLE_STORE, 'readwrite');
-    tx.objectStore(HANDLE_STORE).put(handle, HANDLE_KEY);
+    tx.objectStore(HANDLE_STORE).put(handle, key);
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
+}
+
+async function getStoredDirectoryHandle() {
+  return getStoredHandle(HANDLE_KEY);
+}
+
+async function storeDirectoryHandle(handle) {
+  return storeHandle(HANDLE_KEY, handle);
+}
+
+async function getStoredTodayDirectoryHandle() {
+  return getStoredHandle(TODAY_HANDLE_KEY);
+}
+
+async function storeTodayDirectoryHandle(handle) {
+  return storeHandle(TODAY_HANDLE_KEY, handle);
 }
 
 async function readLibrary(handle) {
@@ -322,6 +351,18 @@ async function writeLibrary(handle, data) {
   const fileHandle = await handle.getFileHandle(LIBRARY_FILE, { create: true });
   const writable = await fileHandle.createWritable();
   await writable.write(JSON.stringify(data, null, 2));
+  await writable.close();
+}
+
+async function writeTodayLyricsFile(handle, dateKey, songs) {
+  const fileHandle = await handle.getFileHandle(todayLyricsFileName(dateKey), { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(JSON.stringify({
+    version: 1,
+    date: dateKey,
+    savedAt: new Date().toISOString(),
+    songs,
+  }, null, 2));
   await writable.close();
 }
 
@@ -465,8 +506,11 @@ function ControlView() {
   const [editingSlide, setEditingSlide] = useState(null);
   const [positionSlide, setPositionSlide] = useState(null);
   const [showLyricsEditor, setShowLyricsEditor] = useState(false);
+  const [todayDate] = useState(() => localDateKey());
   const [todayLyricsIds, setTodayLyricsIds] = useState(() => {
     try {
+      const storedDate = localStorage.getItem('praise-lyrics-today-date');
+      if (storedDate !== localDateKey()) return [];
       return JSON.parse(localStorage.getItem('praise-lyrics-today') || '[]');
     } catch {
       return [];
@@ -474,12 +518,16 @@ function ControlView() {
   });
   const [todayCreated, setTodayCreated] = useState(() => {
     try {
+      const storedDate = localStorage.getItem('praise-lyrics-today-date');
+      if (storedDate !== localDateKey()) return false;
       return localStorage.getItem('praise-lyrics-today-created') === 'true' ||
         JSON.parse(localStorage.getItem('praise-lyrics-today') || '[]').length > 0;
     } catch {
       return false;
     }
   });
+  const [todayDirectoryHandle, setTodayDirectoryHandle] = useState(null);
+  const [todaySaveStatus, setTodaySaveStatus] = useState('');
   const [showToday, setShowToday] = useState(false);
   const [screenOptions, setScreenOptions] = useState([]);
   const [selectedScreenId, setSelectedScreenId] = useState('');
@@ -500,12 +548,38 @@ function ControlView() {
   const todayLyrics = todayLyricsIds.map((id) => lyricsList.find((item) => item.id === id)).filter(Boolean);
 
   useEffect(() => {
+    localStorage.setItem('praise-lyrics-today-date', todayDate);
     localStorage.setItem('praise-lyrics-today', JSON.stringify(todayLyricsIds));
-  }, [todayLyricsIds]);
+  }, [todayLyricsIds, todayDate]);
 
   useEffect(() => {
     localStorage.setItem('praise-lyrics-today-created', String(todayCreated));
   }, [todayCreated]);
+
+  useEffect(() => {
+    if (!todayCreated || !todayDirectoryHandle) return undefined;
+
+    const timer = setTimeout(async () => {
+      try {
+        const permission = await todayDirectoryHandle.queryPermission?.({ mode: 'readwrite' });
+        if (permission !== 'granted') {
+          setTodaySaveStatus('Open Create Today’s Lyrics to re-authorize the folder.');
+          return;
+        }
+
+        const songs = todayLyricsIds
+          .map((id) => lyricsList.find((item) => item.id === id))
+          .filter(Boolean);
+
+        await writeTodayLyricsFile(todayDirectoryHandle, todayDate, songs);
+        setTodaySaveStatus(`${todayLyricsFileName(todayDate)} ✓`);
+      } catch {
+        setTodaySaveStatus('Could not update Today’s Lyrics file.');
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [todayCreated, todayDirectoryHandle, todayLyricsIds, lyricsList, todayDate]);
 
   useEffect(() => {
     const saved = readBrowserBackup();
@@ -542,6 +616,15 @@ function ControlView() {
     }, 250);
     return () => clearTimeout(timer);
   }, [lyricsList, lyrics?.id, style, todayLyricsIds, todayCreated]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const handle = await getStoredTodayDirectoryHandle();
+      if (!cancelled && handle) setTodayDirectoryHandle(handle);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone;
@@ -834,9 +917,32 @@ function ControlView() {
     }
   }
 
-  function createTodayLyrics() {
-    setTodayCreated(true);
+  async function createTodayLyrics() {
     setShowToday(true);
+
+    if (!window.showDirectoryPicker) {
+      setTodayCreated(true);
+      setTodaySaveStatus('Chrome or Edge is required to choose a persistent local folder.');
+      return;
+    }
+
+    try {
+      const handle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'downloads' });
+      await storeTodayDirectoryHandle(handle);
+      setTodayDirectoryHandle(handle);
+      setTodayCreated(true);
+
+      const songs = todayLyricsIds
+        .map((id) => lyricsList.find((item) => item.id === id))
+        .filter(Boolean);
+
+      await writeTodayLyricsFile(handle, todayDate, songs);
+      setTodaySaveStatus(`${todayLyricsFileName(todayDate)} ✓`);
+    } catch (error) {
+      if (error?.name !== 'AbortError') {
+        setTodaySaveStatus('Could not save Today’s Lyrics folder.');
+      }
+    }
   }
 
   function addCurrentToToday() {
@@ -1133,7 +1239,7 @@ function ControlView() {
         <button className="secondary compact" onClick={openLocalLyrics}>📂 {t.openLocalLyrics}</button>
         <button className="secondary compact" onClick={chooseLyricsFolder}>📁 {t.chooseFolder}</button>
         <button className="primary compact" onClick={saveToFolderNow}>💾 {t.saveToFolder}</button>
-        <button className="primary compact create-today-button" onClick={createTodayLyrics}>📅 {todayCreated ? t.openToday : t.createToday}</button>
+        <button className="primary compact create-today-button" onClick={() => todayCreated ? setShowToday(true) : createTodayLyrics()}>📅 {todayCreated ? t.openToday : t.createToday}</button>
         <button className="secondary compact" onClick={() => setShowToday(true)}>📖 {t.openToday} ({todayLyrics.length})</button>
         <span className={folderReady ? 'save-state ready' : 'save-state'}>{saveStatus}</span>
       </div>
@@ -1197,7 +1303,7 @@ function ControlView() {
           </div>
 
           <div className="sidebar-actions">
-            <button className="primary full create-today-button" onClick={createTodayLyrics}>📅 {todayCreated ? t.openToday : t.createToday}</button>
+            <button className="primary full create-today-button" onClick={() => todayCreated ? setShowToday(true) : createTodayLyrics()}>📅 {todayCreated ? t.openToday : t.createToday}</button>
             <button className="primary full" onClick={addCurrentToToday} disabled={!lyrics || todayLyricsIds.includes(lyrics.id)}>＋ {t.addToToday}</button>
             <button className="secondary full" onClick={() => setShowToday(true)}>📖 {t.openToday} ({todayLyrics.length})</button>
             <button className="secondary full" onClick={() => setShowLyricsEditor(true)}>{t.renameLyrics}</button>
@@ -1221,6 +1327,7 @@ function ControlView() {
                 <div>
                   <span className="section-label">{t.todayLyrics}</span>
                   <h2>{language === 'pt' ? 'Todas as letras salvas para hoje' : "All today's saved lyrics"}</h2>
+                  <small>{todayDate} · {todaySaveStatus || (language === 'pt' ? 'Escolha uma pasta com Criar Letras de Hoje' : "Choose a folder with Create Today's Lyrics")}</small>
                 </div>
                 <button className="secondary" onClick={() => setShowToday(false)}>{t.backToLibrary}</button>
               </div>
