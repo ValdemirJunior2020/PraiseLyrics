@@ -422,3 +422,44 @@ body:has(.display-root),
   font-size: 11px !important;
   font-weight: 700;
 }
+
+
+.today-live-hint {
+  margin-top: 8px;
+  color: #86efac;
+  font-size: 12px;
+  font-weight: 700;
+}
+.today-verse-send {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.today-verse-send:hover {
+  background: rgba(34,197,94,.06);
+}
+.today-verse-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+.today-verse-label-row span {
+  color: #86efac;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.today-verse-live {
+  background: rgba(34,197,94,.10);
+  box-shadow: inset 3px 0 0 #22c55e;
+}
+.today-verse-live .today-verse-label-row span {
+  color: #4ade80;
+}
