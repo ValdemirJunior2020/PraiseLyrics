@@ -332,6 +332,7 @@ function getSlideStyle(lyrics, slideIndex, style) {
     ...style,
     background: slide.background ?? style.background,
     backgroundImage: slide.backgroundImage ?? style.backgroundImage,
+    verticalOffset: slide.verticalOffset ?? style.verticalOffset ?? 0,
   };
 }
 
@@ -462,6 +463,7 @@ function ControlView() {
   const [style, setStyle] = useState(DEFAULT_STYLE);
   const [blank, setBlank] = useState(true);
   const [editingSlide, setEditingSlide] = useState(null);
+  const [positionSlide, setPositionSlide] = useState(null);
   const [showLyricsEditor, setShowLyricsEditor] = useState(false);
   const [todayLyricsIds, setTodayLyricsIds] = useState(() => {
     try {
@@ -1287,7 +1289,10 @@ function ControlView() {
                     key={slide.id}
                     className={`verse-card ${index === liveIndex && !blank ? 'live-card' : ''} ${index === selectedIndex ? 'selected-card' : ''}`}
                     style={cardBackground ? { background: cardBackground, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-                    onClick={() => setSelectedIndex(index)}
+                    onClick={() => {
+                      setSelectedIndex(index);
+                      setPositionSlide(slide.id);
+                    }}
                     onDoubleClick={() => setEditingSlide(slide.id)}
                   >
                     <div className="verse-card-head">
@@ -1362,6 +1367,22 @@ function ControlView() {
         </section>
       </div>
 
+      {positionSlide && (
+        <VersePositionEditor
+          slide={lyrics.slides.find((item) => item.id === positionSlide)}
+          t={t}
+          onClose={() => setPositionSlide(null)}
+          onChange={(verticalOffset) => {
+            updateLyrics((current) => ({
+              ...current,
+              slides: current.slides.map((slide) =>
+                slide.id === positionSlide ? { ...slide, verticalOffset } : slide
+              ),
+            }));
+          }}
+        />
+      )}
+
       {editingSlide && (
         <SlideEditor
           slide={lyrics.slides.find((item) => item.id === editingSlide)}
@@ -1396,6 +1417,48 @@ function ControlView() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function VersePositionEditor({ slide, t, onClose, onChange }) {
+  if (!slide) return null;
+  const value = Number(slide.verticalOffset || 0);
+  const setValue = (next) => onChange(Math.max(-45, Math.min(45, next)));
+
+  return (
+    <div className="position-popover-backdrop" onMouseDown={onClose}>
+      <div className="position-popover" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="position-popover-head">
+          <div>
+            <span className="section-label">{slide.label}</span>
+            <strong>{t.verticalPosition}</strong>
+          </div>
+          <button className="icon-button" onClick={onClose}>×</button>
+        </div>
+
+        <div className="position-control-body">
+          <button className="position-arrow" onClick={() => setValue(value - 4)}>↑</button>
+          <div className="position-slider-wrap">
+            <input
+              className="position-vertical-slider"
+              type="range"
+              min="-45"
+              max="45"
+              step="1"
+              value={value}
+              onChange={(event) => setValue(Number(event.target.value))}
+              aria-label={t.verticalPosition}
+            />
+          </div>
+          <button className="position-arrow" onClick={() => setValue(value + 4)}>↓</button>
+        </div>
+
+        <div className="position-popover-footer">
+          <span>{value}</span>
+          <button className="ghost compact" onClick={() => setValue(0)}>{t.resetPosition}</button>
+        </div>
+      </div>
     </div>
   );
 }
