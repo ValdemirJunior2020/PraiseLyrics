@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { STARTER_LYRICS, mergeStarterLyrics } from './starterLyrics.js';
+import { REQUESTED_TODAY_SONG_IDS } from './requestedTodaySongs.js';
 
 const CHANNEL_NAME = 'praise-lyrics-live-v2';
 const LIBRARY_FILE = 'PraiseLyrics-Library.json';
@@ -8,6 +9,21 @@ const HANDLE_STORE = 'handles';
 const HANDLE_KEY = 'lyrics-folder';
 const TODAY_HANDLE_KEY = 'today-lyrics-folder';
 const BROWSER_BACKUP_KEY = 'praise-lyrics-browser-backup-v1';
+const REQUESTED_SETLIST_DATE = '2026-10-10';
+const REQUESTED_SETLIST_MARKER = 'praise-lyrics-2026-10-10-songs-added';
+
+// Seed only once, on the requested date; existing setlists remain intact.
+function initialTodaySongIds() {
+  const date = localDateKey();
+  const storedDate = localStorage.getItem('praise-lyrics-today-date');
+  const savedIds = storedDate === date
+    ? JSON.parse(localStorage.getItem('praise-lyrics-today') || '[]')
+    : [];
+  const ids = Array.isArray(savedIds) ? savedIds : [];
+  if (date !== REQUESTED_SETLIST_DATE || localStorage.getItem(REQUESTED_SETLIST_MARKER)) return ids;
+  localStorage.setItem(REQUESTED_SETLIST_MARKER, 'true');
+  return [...new Set([...ids, ...REQUESTED_TODAY_SONG_IDS])];
+}
 
 function localDateKey() {
   const now = new Date();
@@ -509,9 +525,7 @@ function ControlView() {
   const [todayDate] = useState(() => localDateKey());
   const [todayLyricsIds, setTodayLyricsIds] = useState(() => {
     try {
-      const storedDate = localStorage.getItem('praise-lyrics-today-date');
-      if (storedDate !== localDateKey()) return [];
-      return JSON.parse(localStorage.getItem('praise-lyrics-today') || '[]');
+      return initialTodaySongIds();
     } catch {
       return [];
     }
@@ -521,7 +535,8 @@ function ControlView() {
       const storedDate = localStorage.getItem('praise-lyrics-today-date');
       if (storedDate !== localDateKey()) return false;
       return localStorage.getItem('praise-lyrics-today-created') === 'true' ||
-        JSON.parse(localStorage.getItem('praise-lyrics-today') || '[]').length > 0;
+        JSON.parse(localStorage.getItem('praise-lyrics-today') || '[]').length > 0 ||
+        (localDateKey() === REQUESTED_SETLIST_DATE && localStorage.getItem(REQUESTED_SETLIST_MARKER) === 'true');
     } catch {
       return false;
     }
@@ -591,7 +606,7 @@ function ControlView() {
         : mergedLyrics[0].id);
       setStyle({ ...DEFAULT_STYLE, ...(saved.style || {}) });
       if (saved.todayDate === todayDate && Array.isArray(saved.todayLyricsIds)) {
-        setTodayLyricsIds(saved.todayLyricsIds);
+        setTodayLyricsIds((current) => [...new Set([...saved.todayLyricsIds, ...current])]);
         if (typeof saved.todayCreated === 'boolean') setTodayCreated(saved.todayCreated);
         else if (saved.todayLyricsIds.length) setTodayCreated(true);
       }
@@ -665,7 +680,7 @@ function ControlView() {
           setStyle({ ...DEFAULT_STYLE, ...(saved.style || {}) });
           const browserToday = localStorage.getItem('praise-lyrics-today');
           if (saved.todayDate === todayDate && browserToday === null && Array.isArray(saved.todayLyricsIds)) {
-            setTodayLyricsIds(saved.todayLyricsIds);
+            setTodayLyricsIds((current) => [...new Set([...saved.todayLyricsIds, ...current])]);
           }
           const browserTodayCreated = localStorage.getItem('praise-lyrics-today-created');
           if (saved.todayDate === todayDate && browserTodayCreated === null && typeof saved.todayCreated === 'boolean') {
