@@ -533,7 +533,10 @@ function ControlView() {
   const [todayCreated, setTodayCreated] = useState(() => {
     try {
       const storedDate = localStorage.getItem('praise-lyrics-today-date');
-      if (storedDate !== localDateKey()) return false;
+      if (storedDate !== localDateKey()) {
+        return localDateKey() === REQUESTED_SETLIST_DATE &&
+          localStorage.getItem(REQUESTED_SETLIST_MARKER) === 'true';
+      }
       return localStorage.getItem('praise-lyrics-today-created') === 'true' ||
         JSON.parse(localStorage.getItem('praise-lyrics-today') || '[]').length > 0 ||
         (localDateKey() === REQUESTED_SETLIST_DATE && localStorage.getItem(REQUESTED_SETLIST_MARKER) === 'true');
