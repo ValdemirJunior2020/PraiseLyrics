@@ -5,6 +5,7 @@ import { ONLY_A_HOLY_GOD } from './onlyAHolyGod.js';
 import { JESUS_MESSIAH } from './jesusMessiah.js';
 import { LORD_HAVE_MERCY } from './lordHaveMercy.js';
 import { THE_LOVE_OF_GOD } from './theLoveOfGod.js';
+import { REQUESTED_TODAY_SONGS } from './requestedTodaySongs.js';
 
 const makeLyrics = (id, title, artist, language = 'en') => ({
   id: `starter-${id}`,
@@ -21,6 +22,7 @@ const makeLyrics = (id, title, artist, language = 'en') => ({
 });
 
 export const STARTER_LYRICS = [
+  ...REQUESTED_TODAY_SONGS,
   IMMORTAL_INVISIBLE,
   ONLY_A_HOLY_GOD,
   JESUS_MESSIAH,
