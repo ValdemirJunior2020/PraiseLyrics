@@ -556,6 +556,7 @@ function ControlView() {
   const [todayDirectoryHandle, setTodayDirectoryHandle] = useState(null);
   const [todaySaveStatus, setTodaySaveStatus] = useState('');
   const [showToday, setShowToday] = useState(false);
+  const [showSunday1108, setShowSunday1108] = useState(false);
   const [screenOptions, setScreenOptions] = useState([]);
   const [selectedScreenId, setSelectedScreenId] = useState('');
   const [status, setStatus] = useState(t.wallNotOpen);
@@ -573,6 +574,7 @@ function ControlView() {
   const lyrics = lyricsList.find((item) => item.id === lyricsId) || lyricsList[0];
   const selectedSlide = lyrics?.slides?.[selectedIndex];
   const todayLyrics = todayLyricsIds.map((id) => lyricsList.find((item) => item.id === id)).filter(Boolean);
+  const visibleSetlist = showSunday1108 ? SUNDAY_2026_11_08_SONG_IDS.map((id) => lyricsList.find((item) => item.id === id)).filter(Boolean) : todayLyrics;
 
   useEffect(() => {
     localStorage.setItem('praise-lyrics-today-date', todayDate);
@@ -1281,11 +1283,12 @@ function ControlView() {
       </header>
 
       <div className="savebar">
+        <button className="sunday-1108-button compact" onClick={() => { setShowSunday1108(true); setShowToday(true); }}>11/08/26 Lyrics</button>
         <button className="secondary compact" onClick={openLocalLyrics}>📂 {t.openLocalLyrics}</button>
         <button className="secondary compact" onClick={chooseLyricsFolder}>📁 {t.chooseFolder}</button>
         <button className="primary compact" onClick={saveToFolderNow}>💾 {t.saveToFolder}</button>
         <button className="primary compact create-today-button" onClick={() => (todayCreated && todayDirectoryHandle) ? setShowToday(true) : createTodayLyrics()}>📅 {(todayCreated && todayDirectoryHandle) ? t.openToday : t.createToday}</button>
-        <button className="secondary compact" onClick={() => setShowToday(true)}>📖 {t.openToday} ({todayLyrics.length})</button>
+        <button className="secondary compact" onClick={() => { setShowSunday1108(false); setShowToday(true); }}>📖 {t.openToday} ({todayLyrics.length})</button>
         <span className={folderReady ? 'save-state ready' : 'save-state'}>{saveStatus}</span>
       </div>
 
@@ -1371,18 +1374,18 @@ function ControlView() {
               <div className="section-head wide">
                 <div>
                   <span className="section-label">{t.todayLyrics}</span>
-                  <h2>{language === 'pt' ? 'Todas as letras salvas para hoje' : "All today's saved lyrics"}</h2>
-                  <small>{todayDate} · {todaySaveStatus || (language === 'pt' ? 'Escolha uma pasta com Criar Letras de Hoje' : "Choose a folder with Create Today's Lyrics")}</small>
+                  <h2>{showSunday1108 ? "Sunday 11/08/26 Worship Lyrics" : (language === 'pt' ? 'Todas as letras salvas para hoje' : "All today's saved lyrics")}</h2>
+                  <small>{showSunday1108 ? "2026-11-08" : todayDate} · {todaySaveStatus || (language === 'pt' ? 'Escolha uma pasta com Criar Letras de Hoje' : "Choose a folder with Create Today's Lyrics")}</small>
                   <div className="today-live-hint">{language === 'pt' ? 'Clique em qualquer verso abaixo para enviar direto ao telão.' : 'Click any verse below to send it directly to the big screen.'}</div>
                 </div>
                 <button className="secondary" onClick={() => setShowToday(false)}>{t.backToLibrary}</button>
               </div>
               <div className="todays-lyrics-stack">
-                {todayLyrics.map((song, songIndex) => (
+                {visibleSetlist.map((song, songIndex) => (
                   <section key={song.id} className="today-song-block">
                     <div className="today-song-heading">
                       <span>{String(songIndex + 1).padStart(2, '0')}</span>
-                      <h3>{song.title}</h3>
+                      <h3>{song.title}{song.key ? ` (${song.key})` : ""}</h3>
                       <button
                         className="secondary compact"
                         onClick={() => {
@@ -1414,7 +1417,7 @@ function ControlView() {
                     </div>
                   </section>
                 ))}
-                {!todayLyrics.length && <div className="tip-box">{t.todayEmpty}</div>}
+                {!visibleSetlist.length && <div className="tip-box">{t.todayEmpty}</div>}
               </div>
             </div>
           ) : (
