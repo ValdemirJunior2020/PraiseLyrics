@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { STARTER_LYRICS, mergeStarterLyrics } from './starterLyrics.js';
 import { REQUESTED_TODAY_SONG_IDS } from './requestedTodaySongs.js';
+import { SUNDAY_2026_11_08_SONG_IDS } from './sunday20261108Songs.js';
 
 const CHANNEL_NAME = 'praise-lyrics-live-v2';
 const LIBRARY_FILE = 'PraiseLyrics-Library.json';
@@ -11,6 +12,8 @@ const TODAY_HANDLE_KEY = 'today-lyrics-folder';
 const BROWSER_BACKUP_KEY = 'praise-lyrics-browser-backup-v1';
 const REQUESTED_SETLIST_DATE = '2026-10-10';
 const REQUESTED_SETLIST_MARKER = 'praise-lyrics-2026-10-10-songs-added';
+const SUNDAY_SETLIST_DATE = '2026-11-08';
+const SUNDAY_SETLIST_MARKER = 'praise-lyrics-2026-11-08-songs-added';
 
 // Seed only once, on the requested date; existing setlists remain intact.
 function initialTodaySongIds() {
@@ -20,6 +23,11 @@ function initialTodaySongIds() {
     ? JSON.parse(localStorage.getItem('praise-lyrics-today') || '[]')
     : [];
   const ids = Array.isArray(savedIds) ? savedIds : [];
+  if (date === SUNDAY_SETLIST_DATE) {
+    if (localStorage.getItem(SUNDAY_SETLIST_MARKER)) return ids;
+    localStorage.setItem(SUNDAY_SETLIST_MARKER, 'true');
+    return [...new Set([...ids, ...SUNDAY_2026_11_08_SONG_IDS])];
+  }
   if (date !== REQUESTED_SETLIST_DATE || localStorage.getItem(REQUESTED_SETLIST_MARKER)) return ids;
   localStorage.setItem(REQUESTED_SETLIST_MARKER, 'true');
   return [...new Set([...ids, ...REQUESTED_TODAY_SONG_IDS])];
@@ -534,12 +542,13 @@ function ControlView() {
     try {
       const storedDate = localStorage.getItem('praise-lyrics-today-date');
       if (storedDate !== localDateKey()) {
-        return localDateKey() === REQUESTED_SETLIST_DATE &&
-          localStorage.getItem(REQUESTED_SETLIST_MARKER) === 'true';
+        return ((localDateKey() === REQUESTED_SETLIST_DATE && localStorage.getItem(REQUESTED_SETLIST_MARKER) === 'true') ||
+          (localDateKey() === SUNDAY_SETLIST_DATE && localStorage.getItem(SUNDAY_SETLIST_MARKER) === 'true'));
       }
       return localStorage.getItem('praise-lyrics-today-created') === 'true' ||
         JSON.parse(localStorage.getItem('praise-lyrics-today') || '[]').length > 0 ||
-        (localDateKey() === REQUESTED_SETLIST_DATE && localStorage.getItem(REQUESTED_SETLIST_MARKER) === 'true');
+        (((localDateKey() === REQUESTED_SETLIST_DATE && localStorage.getItem(REQUESTED_SETLIST_MARKER) === 'true') ||
+          (localDateKey() === SUNDAY_SETLIST_DATE && localStorage.getItem(SUNDAY_SETLIST_MARKER) === 'true')));
     } catch {
       return false;
     }
