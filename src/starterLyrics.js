@@ -6,7 +6,7 @@ import { JESUS_MESSIAH } from './jesusMessiah.js';
 import { LORD_HAVE_MERCY } from './lordHaveMercy.js';
 import { THE_LOVE_OF_GOD } from './theLoveOfGod.js';
 import { REQUESTED_TODAY_SONGS } from './requestedTodaySongs.js';
-import { SUNDAY_2026_11_08_SONGS } from './sunday20261108Songs.js';
+import { SUNDAY_2026_11_08_SONGS, BEAUTIFUL_NAME_SLIDES } from './sunday20261108Songs.js';
 
 const makeLyrics = (id, title, artist, language = 'en') => ({
   id: `starter-${id}`,
@@ -36,7 +36,7 @@ export const STARTER_LYRICS = [
   makeLyrics('gratitude', 'Gratitude', 'Brandon Lake'),
   makeLyrics('build-my-life', 'Build My Life', 'Housefires / Pat Barrett'),
   makeLyrics('way-maker', 'Way Maker', 'Sinach / Leeland'),
-  { ...makeLyrics('what-a-beautiful-name', 'What a Beautiful Name', 'Hillsong Worship'), key: 'A' },
+  { ...makeLyrics('what-a-beautiful-name', 'What a Beautiful Name', 'Hillsong Worship'), key: 'A', slides: BEAUTIFUL_NAME_SLIDES },
   makeLyrics('living-hope', 'Living Hope', 'Phil Wickham'),
   makeLyrics('battle-belongs', 'Battle Belongs', 'Phil Wickham'),
   makeLyrics('house-of-the-lord', 'House of the Lord', 'Phil Wickham'),
