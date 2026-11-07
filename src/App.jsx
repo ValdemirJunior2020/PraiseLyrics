@@ -1284,7 +1284,7 @@ function ControlView() {
       </header>
 
       <div className="savebar">
-        <button className="sunday-1108-button compact" onClick={() => { setShowSunday1108(true); setShowToday(true); }}>11/08/26 Lyrics</button>
+        <button className="sunday-1108-button compact" onClick={() => { const first = SUNDAY_2026_11_08_SONG_IDS.find((id) => lyricsList.some((song) => song.id === id)); if (first) openPlannedLyrics(first); setShowSunday1108(true); setShowToday(false); }}>11/08/26 Lyrics</button>
         <button className="secondary compact" onClick={openLocalLyrics}>📂 {t.openLocalLyrics}</button>
         <button className="secondary compact" onClick={chooseLyricsFolder}>📁 {t.chooseFolder}</button>
         <button className="primary compact" onClick={saveToFolderNow}>💾 {t.saveToFolder}</button>
@@ -1370,6 +1370,30 @@ function ControlView() {
         </aside>
 
         <section className="main-column">
+          {showSunday1108 && !showToday && (
+            <div className="panel sunday-1108-switcher">
+              <div className="sunday-1108-switcher-heading">
+                <strong>Sunday 11/08/26 · Service Control</strong>
+                <button className="secondary compact" onClick={() => setShowSunday1108(false)}>Close Sunday Setlist</button>
+              </div>
+              <div className="sunday-1108-song-buttons">
+                {SUNDAY_2026_11_08_SONG_IDS.map((id, index) => {
+                  const song = lyricsList.find((item) => item.id === id);
+                  if (!song) return null;
+                  return (
+                    <button
+                      key={id}
+                      className={lyrics?.id === id ? 'sunday-1108-song-button selected' : 'sunday-1108-song-button'}
+                      onClick={() => openPlannedLyrics(id)}
+                    >
+                      <span>{index + 1}. {song.title} ({song.key || ['C', 'C', 'D', 'A'][index]})</span>
+                      <small>{song.slides?.length || 0} slides</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {showToday ? (
             <div className="panel todays-lyrics-panel">
               <div className="section-head wide">
