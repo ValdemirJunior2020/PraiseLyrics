@@ -856,8 +856,9 @@ function ControlView() {
       await storeDirectoryHandle(handle);
       const existing = await readLibrary(handle);
       if (existing?.lyrics?.length) {
-        setLyricsList(existing.lyrics);
-        setLyricsId(existing.activeLyricsId || existing.lyrics[0].id);
+        const mergedLyrics = mergeStarterLyrics(existing.lyrics);
+        setLyricsList(mergedLyrics);
+        setLyricsId(existing.activeLyricsId && mergedLyrics.some((item) => item.id === existing.activeLyricsId) ? existing.activeLyricsId : mergedLyrics[0].id);
         setStyle({ ...DEFAULT_STYLE, ...(existing.style || {}) });
       } else {
         await writeLibrary(handle, {
@@ -1287,7 +1288,7 @@ function ControlView() {
         <button className="secondary compact" onClick={openLocalLyrics}>📂 {t.openLocalLyrics}</button>
         <button className="secondary compact" onClick={chooseLyricsFolder}>📁 {t.chooseFolder}</button>
         <button className="primary compact" onClick={saveToFolderNow}>💾 {t.saveToFolder}</button>
-        <button className="primary compact create-today-button" onClick={() => (todayCreated && todayDirectoryHandle) ? setShowToday(true) : createTodayLyrics()}>📅 {(todayCreated && todayDirectoryHandle) ? t.openToday : t.createToday}</button>
+        <button className="primary compact create-today-button" onClick={() => { setShowSunday1108(false); if (todayCreated && todayDirectoryHandle) setShowToday(true); else createTodayLyrics(); }}>📅 {(todayCreated && todayDirectoryHandle) ? t.openToday : t.createToday}</button>
         <button className="secondary compact" onClick={() => { setShowSunday1108(false); setShowToday(true); }}>📖 {t.openToday} ({todayLyrics.length})</button>
         <span className={folderReady ? 'save-state ready' : 'save-state'}>{saveStatus}</span>
       </div>
@@ -1378,7 +1379,7 @@ function ControlView() {
                   <small>{showSunday1108 ? "2026-11-08" : todayDate} · {todaySaveStatus || (language === 'pt' ? 'Escolha uma pasta com Criar Letras de Hoje' : "Choose a folder with Create Today's Lyrics")}</small>
                   <div className="today-live-hint">{language === 'pt' ? 'Clique em qualquer verso abaixo para enviar direto ao telão.' : 'Click any verse below to send it directly to the big screen.'}</div>
                 </div>
-                <button className="secondary" onClick={() => setShowToday(false)}>{t.backToLibrary}</button>
+                <button className="secondary" onClick={() => { setShowToday(false); setShowSunday1108(false); }}>{t.backToLibrary}</button>
               </div>
               <div className="todays-lyrics-stack">
                 {visibleSetlist.map((song, songIndex) => (
