@@ -6,6 +6,7 @@ import { JESUS_MESSIAH } from './jesusMessiah.js';
 import { LORD_HAVE_MERCY } from './lordHaveMercy.js';
 import { THE_LOVE_OF_GOD } from './theLoveOfGod.js';
 import { REQUESTED_TODAY_SONGS } from './requestedTodaySongs.js';
+import { SUNDAY_2026_11_08_SONGS } from './sunday20261108Songs.js';
 
 const makeLyrics = (id, title, artist, language = 'en') => ({
   id: `starter-${id}`,
@@ -23,6 +24,7 @@ const makeLyrics = (id, title, artist, language = 'en') => ({
 
 export const STARTER_LYRICS = [
   ...REQUESTED_TODAY_SONGS,
+  ...SUNDAY_2026_11_08_SONGS,
   IMMORTAL_INVISIBLE,
   ONLY_A_HOLY_GOD,
   JESUS_MESSIAH,
@@ -34,7 +36,7 @@ export const STARTER_LYRICS = [
   makeLyrics('gratitude', 'Gratitude', 'Brandon Lake'),
   makeLyrics('build-my-life', 'Build My Life', 'Housefires / Pat Barrett'),
   makeLyrics('way-maker', 'Way Maker', 'Sinach / Leeland'),
-  makeLyrics('what-a-beautiful-name', 'What a Beautiful Name', 'Hillsong Worship'),
+  { ...makeLyrics('what-a-beautiful-name', 'What a Beautiful Name', 'Hillsong Worship'), key: 'A' },
   makeLyrics('living-hope', 'Living Hope', 'Phil Wickham'),
   makeLyrics('battle-belongs', 'Battle Belongs', 'Phil Wickham'),
   makeLyrics('house-of-the-lord', 'House of the Lord', 'Phil Wickham'),
@@ -104,7 +106,8 @@ export function mergeStarterLyrics(existing = []) {
     const starterHasText = Array.isArray(starter.slides)
       && starter.slides.some((slide) => String(slide?.text || '').trim());
 
-    return !existingHasText && starterHasText ? starter : item;
+    if (!existingHasText && starterHasText) return { ...starter, ...item, slides: starter.slides, key: item.key || starter.key };
+    return starter.key && !item.key ? { ...item, key: starter.key } : item;
   });
 
   const titles = new Set(upgraded.map((item) => normalize(item.title)));
