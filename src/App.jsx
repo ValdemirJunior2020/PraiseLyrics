@@ -1424,6 +1424,20 @@ function ControlView() {
         </aside>
 
         <section className="main-column">
+          <div className="panel bulk-background-tools bulk-background-quick">
+            <strong>{language === 'pt' ? 'Imagem de fundo para todos os slides' : 'Background image for all slides'}</strong>
+            <div className="bulk-background-buttons">
+              <label className="upload-button">
+                {language === 'pt' ? '📷 Esta música inteira' : '📷 Entire current song'}
+                <input type="file" accept="image/*" onChange={(event) => uploadBulkBackground(event, 'song')} />
+              </label>
+              <label className="upload-button">
+                {language === 'pt' ? '📷 Todas as músicas de hoje' : "📷 All today's songs"}
+                <input type="file" accept="image/*" onChange={(event) => uploadBulkBackground(event, 'today')} />
+              </label>
+            </div>
+            {bulkImageStatus && <small role="status">{bulkImageStatus}</small>}
+          </div>
           {showSunday1108 && !showToday && (
             <div className="panel sunday-1108-switcher">
               <div className="sunday-1108-switcher-heading">
