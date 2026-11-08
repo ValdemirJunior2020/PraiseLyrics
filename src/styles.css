@@ -492,3 +492,18 @@ body:has(.display-root),
 .sunday-1108-song-button:hover, .sunday-1108-song-button.selected { border-color: #f472b6; background: #38142f; }
 @media (max-width: 900px) { .sunday-1108-song-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 500px) { .sunday-1108-song-buttons { grid-template-columns: 1fr; } }
+
+/* Bulk background upload — persistent song-level image, no per-verse clicks. */
+.bulk-background-tools {
+  display: grid;
+  gap: 9px;
+  margin-top: 15px;
+  padding: 13px;
+  border: 1px solid #2c3440;
+  border-radius: 11px;
+  background: #0d1116;
+}
+.bulk-background-tools > strong { font-size: 13px; }
+.bulk-background-buttons { display: flex; flex-wrap: wrap; gap: 9px; }
+.bulk-background-buttons .upload-button { flex: 1 1 240px; cursor: pointer; }
+.bulk-background-tools small { color: #9ca8b8; line-height: 1.4; }
