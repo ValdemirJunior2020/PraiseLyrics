@@ -5,9 +5,7 @@
   }
 
   .verses-panel {
-    position: sticky;
-    top: 10px;
-    z-index: 12;
+    position: static;
   }
 
   .verse-strip {
@@ -15,9 +13,7 @@
   }
 
   .lower-grid {
-    position: sticky;
-    top: 282px;
-    z-index: 11;
+    position: static;
     align-self: start;
   }
 
