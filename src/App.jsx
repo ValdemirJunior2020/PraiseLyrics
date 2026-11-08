@@ -396,7 +396,7 @@ function getSlideStyle(lyrics, slideIndex, style) {
   return {
     ...style,
     background: slide.background ?? style.background,
-    backgroundImage: slide.backgroundImage ?? style.backgroundImage,
+    backgroundImage: slide.backgroundImage ?? lyrics?.backgroundImage ?? style.backgroundImage,
     verticalOffset: slide.verticalOffset ?? style.verticalOffset ?? 0,
   };
 }
@@ -568,6 +568,7 @@ function ControlView() {
   const [directoryHandle, setDirectoryHandle] = useState(null);
   const [folderReady, setFolderReady] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
+  const [bulkImageStatus, setBulkImageStatus] = useState('');
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstall, setShowInstall] = useState(false);
   const [installMessage, setInstallMessage] = useState('');
@@ -1037,6 +1038,55 @@ function ControlView() {
   function applyVerseBackground(background) {
     updateSelectedSlide({ background, backgroundImage: '' });
     setImageUrl('');
+  }
+
+  // The bulk background belongs to the song rather than being duplicated in
+  // each slide, keeping JSON backups and browser storage reasonably small.
+  async function uploadBulkBackground(event, scope) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    input.value = '';
+    if (!file.type.startsWith('image/')) {
+      setBulkImageStatus(language === 'pt' ? 'Selecione uma imagem válida.' : 'Choose a valid image file.');
+      return;
+    }
+    try {
+      // Resize large PNG/JPEG/WebP/GIF uploads to keep persistent backups small.
+      const bitmap = await createImageBitmap(file);
+      const width = Math.min(bitmap.width, 1920);
+      const height = Math.max(1, Math.round(bitmap.height * width / bitmap.width));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Canvas not available');
+      context.fillStyle = '#000';
+      context.fillRect(0, 0, width, height);
+      context.drawImage(bitmap, 0, 0, width, height);
+      bitmap.close?.();
+      const backgroundImage = canvas.toDataURL('image/jpeg', 0.82);
+      const selectedIds = new Set(scope === 'today'
+        ? [...todayLyricsIds, ...SUNDAY_2026_11_08_SONG_IDS.filter((id) => todayDate === SUNDAY_SETLIST_DATE)]
+        : [lyrics?.id]);
+      setLyricsList((current) => current.map((song) => {
+        if (!selectedIds.has(song.id)) return song;
+        return {
+          ...song,
+          backgroundImage,
+          // Clear old per-slide images so the new bulk image appears everywhere.
+          slides: (song.slides || []).map((slide) => ({
+            ...slide,
+            backgroundImage: undefined,
+          })),
+        };
+      }));
+      setBulkImageStatus(language === 'pt'
+        ? (scope === 'today' ? 'Imagem aplicada às músicas de hoje e salva automaticamente.' : 'Imagem aplicada a todos os slides da música e salva automaticamente.')
+        : (scope === 'today' ? 'Image applied to today’s songs and saved automatically.' : 'Image applied to every slide of this song and saved automatically.'));
+    } catch {
+      setBulkImageStatus(language === 'pt' ? 'Não foi possível ler esta imagem.' : 'Could not read this image. Try PNG, JPG or WebP.');
+    }
   }
 
   function sendSongSlide(song, index) {
@@ -1538,6 +1588,21 @@ function ControlView() {
                 <button className="secondary" onClick={applyImageUrl}>{t.useSelected}</button>
                 <label className="upload-button">{t.uploadImage}<input type="file" accept="image/*" onChange={handleImageUpload} /></label>
                 <button className="ghost" onClick={() => { setImageUrl(''); updateSelectedSlide({ backgroundImage: '' }); }}>{t.clearImage}</button>
+              </div>
+              <div className="bulk-background-tools">
+                <strong>{language === 'pt' ? 'Imagem para vários slides' : 'Bulk background image'}</strong>
+                <div className="bulk-background-buttons">
+                  <label className="upload-button">
+                    {language === 'pt' ? '📷 Enviar para todos os slides desta música' : '📷 Upload for all slides in this song'}
+                    <input type="file" accept="image/*" onChange={(event) => uploadBulkBackground(event, 'song')} />
+                  </label>
+                  <label className="upload-button">
+                    {language === 'pt' ? '📷 Enviar para todas as músicas de hoje' : "📷 Upload for all today's songs"}
+                    <input type="file" accept="image/*" onChange={(event) => uploadBulkBackground(event, 'today')} />
+                  </label>
+                </div>
+                <small>{language === 'pt' ? 'PNG, JPG, WebP e outras imagens. A imagem fica salva nas músicas para uso futuro.' : 'PNG, JPG, WebP and other images. Saved with the songs for future use.'}</small>
+                {bulkImageStatus && <small role="status">{bulkImageStatus}</small>}
               </div>
             </div>
 
