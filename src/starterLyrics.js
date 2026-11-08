@@ -106,6 +106,14 @@ export function mergeStarterLyrics(existing = []) {
     const starterHasText = Array.isArray(starter.slides)
       && starter.slides.some((slide) => String(slide?.text || '').trim());
 
+    // Upgrade the previously shipped Sunday lyrics even when they were saved
+    // in a local library. Preserve later user edits once the corrected intro is present.
+    if (starter.id === 'sunday-2026-11-08-no-one-like-the-lord') {
+      const oldIntro = item.slides?.[0]?.text || '';
+      if (oldIntro.startsWith('Yeah, yeah, yeah, yeah, ay')) {
+        return { ...item, slides: starter.slides, key: item.key || starter.key };
+      }
+    }
     if (!existingHasText && starterHasText) return { ...starter, ...item, slides: starter.slides, key: item.key || starter.key };
     return starter.key && !item.key ? { ...item, key: starter.key } : item;
   });
