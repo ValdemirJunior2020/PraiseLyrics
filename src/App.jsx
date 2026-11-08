@@ -429,27 +429,42 @@ function DisplayView() {
     if (payload?.type === 'LIVE_UPDATE') setLive(payload);
   }, []);
 
-  useEffect(() => {
-    const requestFullscreen = async () => {
-      if (!document.fullscreenElement) {
-        try {
-          await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' });
-        } catch {
-          // Browsers only allow fullscreen after a user gesture.
-        }
+  // Browser fullscreen requires a user gesture. Keep the wall ready for
+  // every click instead of losing the only attempt when the first one fails.
+  const enterFullscreen = useCallback(async () => {
+    if (document.fullscreenElement) return;
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
       }
+    } catch {
+      // The wall remains usable; Chrome/Edge also support F11 as a fallback.
+    } finally {
       setNeedsFullscreen(!document.fullscreenElement);
-    };
+    }
+  }, []);
+
+  useEffect(() => {
     const syncFullscreen = () => setNeedsFullscreen(!document.fullscreenElement);
-    window.addEventListener('click', requestFullscreen, { once: true });
-    window.addEventListener('keydown', requestFullscreen, { once: true });
+    const onWallClick = (event) => {
+      if (event.target.closest('button')) return;
+      if (!document.fullscreenElement) void enterFullscreen();
+    };
+    const onKeyDown = (event) => {
+      if (event.key.toLowerCase() === 'f' && !event.repeat && !event.altKey && !event.ctrlKey && !event.metaKey) {
+        void enterFullscreen();
+      }
+    };
+    document.addEventListener('click', onWallClick);
+    window.addEventListener('keydown', onKeyDown);
     document.addEventListener('fullscreenchange', syncFullscreen);
+    syncFullscreen();
     return () => {
-      window.removeEventListener('click', requestFullscreen);
-      window.removeEventListener('keydown', requestFullscreen);
+      document.removeEventListener('click', onWallClick);
+      window.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('fullscreenchange', syncFullscreen);
     };
-  }, []);
+  }, [enterFullscreen]);
 
   const style = live?.style || DEFAULT_STYLE;
   const backgroundStyle = style.backgroundImage
@@ -468,12 +483,8 @@ function DisplayView() {
         <button
           type="button"
           className="wall-fullscreen-hint"
-          onClick={async () => {
-            try {
-              await document.documentElement.requestFullscreen?.({ navigationUI: 'hide' });
-            } catch {}
-            setNeedsFullscreen(!document.fullscreenElement);
-          }}
+          onClick={enterFullscreen}
+          title="Enter fullscreen (or press F11 in Chrome)"
         >
           Full Screen / Tela Cheia
         </button>
