@@ -459,6 +459,9 @@ function DisplayView() {
     window.addEventListener('keydown', onKeyDown);
     document.addEventListener('fullscreenchange', syncFullscreen);
     syncFullscreen();
+    // Try immediately on load. Chrome may deny this without user activation;
+    // kiosk mode is needed for truly unattended fullscreen.
+    void enterFullscreen();
     return () => {
       document.removeEventListener('click', onWallClick);
       window.removeEventListener('keydown', onKeyDown);
@@ -479,16 +482,6 @@ function DisplayView() {
   return (
     <main className="display-root" style={backgroundStyle}>
       <BroadcastBridge onMessage={receive} />
-      {needsFullscreen && (
-        <button
-          type="button"
-          className="wall-fullscreen-hint"
-          onClick={enterFullscreen}
-          title="Enter fullscreen (or press F11 in Chrome)"
-        >
-          Full Screen / Tela Cheia
-        </button>
-      )}
       {!live.blank && live.slide && (
         <div
           className="display-lyrics"
