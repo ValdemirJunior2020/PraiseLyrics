@@ -2,12 +2,12 @@ export const NO_ONE_SLIDES = [
   {
     "id": "no-one-1-1",
     "label": "Intro (1/2)",
-    "text": "Yeah, yeah, yeah, yeah, ay\nOh\nThere is One on the throne\nJesus, holy"
+    "text": "There is One on the throne\nJesus, holy\nHe is worthy of praise\nHonor and glory"
   },
   {
     "id": "no-one-1-2",
     "label": "Intro (2/2)",
-    "text": "He is worthy of praise\nHonor and glory\nHey, hey, hey"
+    "text": "Hey, hey, hey"
   },
   {
     "id": "no-one-2-1",
@@ -37,7 +37,7 @@ export const NO_ONE_SLIDES = [
   {
     "id": "no-one-5-1",
     "label": "Chorus (1/2)",
-    "text": "Worthy is the Lamb\nWho was slain and seated on the throne\nAnd there's no one like the Lord, whoa\nAnd the elders, creatures bow"
+    "text": "We crown You King of glory\nWe crown You King of glory\nWe crown You King of glory\nWe crown You Lord of all"
   },
   {
     "id": "no-one-5-2",
@@ -47,7 +47,7 @@ export const NO_ONE_SLIDES = [
   {
     "id": "no-one-6-1",
     "label": "Chorus Repeat (1/2)",
-    "text": "Worthy is the Lamb\nWho was slain and seated on the throne\nThere's no one like the Lord\nAnd all of the elders, creatures bow"
+    "text": "We crown You, You are worthy\nWe crown You, You are worthy\nWe crown You, You are worthy\nWe crown You Lord of all"
   },
   {
     "id": "no-one-6-2",
@@ -57,12 +57,12 @@ export const NO_ONE_SLIDES = [
   {
     "id": "no-one-7-1",
     "label": "Bridge King of Glory",
-    "text": "And we crown You King of glory\nWe crown You King of glory\nWe crown You King of glory\nWe crown You Lord of all"
+    "text": "We crown You King of glory\nWe crown You King of glory\nWe crown You King of glory\nWe crown You Lord of all"
   },
   {
     "id": "no-one-8-1",
     "label": "Bridge You Are Worthy",
-    "text": "We crown You, You are worthy\nWe crown You, You are worthy\nWe crown You, You are worthy\nOh, we crown You Lord of all"
+    "text": "We crown You, You are worthy\nWe crown You, You are worthy\nWe crown You, You are worthy\nWe crown You Lord of all"
   },
   {
     "id": "no-one-9-1",
