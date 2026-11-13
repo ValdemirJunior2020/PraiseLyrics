@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { STARTER_LYRICS, mergeStarterLyrics } from './starterLyrics.js';
 import { REQUESTED_TODAY_SONG_IDS } from './requestedTodaySongs.js';
-import { SUNDAY_2026_11_08_SONG_IDS } from './sunday20261108Songs.js';
+import { SUNDAY_2026_11_15_SONG_IDS } from './sunday20261115Songs.js';
 
 const CHANNEL_NAME = 'praise-lyrics-live-v2';
 const LIBRARY_FILE = 'PraiseLyrics-Library.json';
@@ -12,8 +12,8 @@ const TODAY_HANDLE_KEY = 'today-lyrics-folder';
 const BROWSER_BACKUP_KEY = 'praise-lyrics-browser-backup-v1';
 const REQUESTED_SETLIST_DATE = '2026-10-10';
 const REQUESTED_SETLIST_MARKER = 'praise-lyrics-2026-10-10-songs-added';
-const SUNDAY_SETLIST_DATE = '2026-11-08';
-const SUNDAY_SETLIST_MARKER = 'praise-lyrics-2026-11-08-songs-added';
+const SUNDAY_SETLIST_DATE = '2026-11-15';
+const SUNDAY_SETLIST_MARKER = 'praise-lyrics-2026-11-15-songs-added';
 
 // Seed only once, on the requested date; existing setlists remain intact.
 function initialTodaySongIds() {
@@ -26,7 +26,7 @@ function initialTodaySongIds() {
   if (date === SUNDAY_SETLIST_DATE) {
     if (localStorage.getItem(SUNDAY_SETLIST_MARKER)) return ids;
     localStorage.setItem(SUNDAY_SETLIST_MARKER, 'true');
-    return [...new Set([...ids, ...SUNDAY_2026_11_08_SONG_IDS])];
+    return [...new Set([...ids, ...SUNDAY_2026_11_15_SONG_IDS])];
   }
   if (date !== REQUESTED_SETLIST_DATE || localStorage.getItem(REQUESTED_SETLIST_MARKER)) return ids;
   localStorage.setItem(REQUESTED_SETLIST_MARKER, 'true');
@@ -560,7 +560,7 @@ function ControlView() {
   const [todayDirectoryHandle, setTodayDirectoryHandle] = useState(null);
   const [todaySaveStatus, setTodaySaveStatus] = useState('');
   const [showToday, setShowToday] = useState(false);
-  const [showSunday1108, setShowSunday1108] = useState(false);
+  const [showSunday1115, setShowSunday1115] = useState(false);
   const [screenOptions, setScreenOptions] = useState([]);
   const [selectedScreenId, setSelectedScreenId] = useState('');
   const [status, setStatus] = useState(t.wallNotOpen);
@@ -579,7 +579,7 @@ function ControlView() {
   const lyrics = lyricsList.find((item) => item.id === lyricsId) || lyricsList[0];
   const selectedSlide = lyrics?.slides?.[selectedIndex];
   const todayLyrics = todayLyricsIds.map((id) => lyricsList.find((item) => item.id === id)).filter(Boolean);
-  const visibleSetlist = showSunday1108 ? SUNDAY_2026_11_08_SONG_IDS.map((id) => lyricsList.find((item) => item.id === id)).filter(Boolean) : todayLyrics;
+  const visibleSetlist = showSunday1115 ? SUNDAY_2026_11_15_SONG_IDS.map((id) => lyricsList.find((item) => item.id === id)).filter(Boolean) : todayLyrics;
 
   useEffect(() => {
     localStorage.setItem('praise-lyrics-today-date', todayDate);
@@ -1067,7 +1067,7 @@ function ControlView() {
       bitmap.close?.();
       const backgroundImage = canvas.toDataURL('image/jpeg', 0.82);
       const selectedIds = new Set(scope === 'today'
-        ? [...todayLyricsIds, ...SUNDAY_2026_11_08_SONG_IDS.filter((id) => todayDate === SUNDAY_SETLIST_DATE)]
+        ? [...todayLyricsIds, ...SUNDAY_2026_11_15_SONG_IDS.filter((id) => todayDate === SUNDAY_SETLIST_DATE)]
         : [lyrics?.id]);
       setLyricsList((current) => current.map((song) => {
         if (!selectedIds.has(song.id)) return song;
@@ -1338,12 +1338,12 @@ function ControlView() {
       </header>
 
       <div className="savebar">
-        <button className="sunday-1108-button compact" onClick={() => { const first = SUNDAY_2026_11_08_SONG_IDS.find((id) => lyricsList.some((song) => song.id === id)); if (first) openPlannedLyrics(first); setShowSunday1108(true); setShowToday(false); }}>11/08/26 Lyrics</button>
+        <button className="sunday-1108-button compact" onClick={() => { const first = SUNDAY_2026_11_15_SONG_IDS.find((id) => lyricsList.some((song) => song.id === id)); if (first) openPlannedLyrics(first); setShowSunday1115(true); setShowToday(false); }}>11/15/26 Lyrics</button>
         <button className="secondary compact" onClick={openLocalLyrics}>📂 {t.openLocalLyrics}</button>
         <button className="secondary compact" onClick={chooseLyricsFolder}>📁 {t.chooseFolder}</button>
         <button className="primary compact" onClick={saveToFolderNow}>💾 {t.saveToFolder}</button>
-        <button className="primary compact create-today-button" onClick={() => { setShowSunday1108(false); if (todayCreated && todayDirectoryHandle) setShowToday(true); else createTodayLyrics(); }}>📅 {(todayCreated && todayDirectoryHandle) ? t.openToday : t.createToday}</button>
-        <button className="secondary compact" onClick={() => { setShowSunday1108(false); setShowToday(true); }}>📖 {t.openToday} ({todayLyrics.length})</button>
+        <button className="primary compact create-today-button" onClick={() => { setShowSunday1115(false); if (todayCreated && todayDirectoryHandle) setShowToday(true); else createTodayLyrics(); }}>📅 {(todayCreated && todayDirectoryHandle) ? t.openToday : t.createToday}</button>
+        <button className="secondary compact" onClick={() => { setShowSunday1115(false); setShowToday(true); }}>📖 {t.openToday} ({todayLyrics.length})</button>
         <span className={folderReady ? 'save-state ready' : 'save-state'}>{saveStatus}</span>
       </div>
 
@@ -1438,14 +1438,14 @@ function ControlView() {
             </div>
             {bulkImageStatus && <small role="status">{bulkImageStatus}</small>}
           </div>
-          {showSunday1108 && !showToday && (
+          {showSunday1115 && !showToday && (
             <div className="panel sunday-1108-switcher">
               <div className="sunday-1108-switcher-heading">
-                <strong>Sunday 11/08/26 · Service Control</strong>
-                <button className="secondary compact" onClick={() => setShowSunday1108(false)}>Close Sunday Setlist</button>
+                <strong>Sunday 11/15/26 · Service Control</strong>
+                <button className="secondary compact" onClick={() => setShowSunday1115(false)}>Close Sunday Setlist</button>
               </div>
               <div className="sunday-1108-song-buttons">
-                {SUNDAY_2026_11_08_SONG_IDS.map((id, index) => {
+                {SUNDAY_2026_11_15_SONG_IDS.map((id, index) => {
                   const song = lyricsList.find((item) => item.id === id);
                   if (!song) return null;
                   return (
@@ -1454,7 +1454,7 @@ function ControlView() {
                       className={lyrics?.id === id ? 'sunday-1108-song-button selected' : 'sunday-1108-song-button'}
                       onClick={() => openPlannedLyrics(id)}
                     >
-                      <span>{index + 1}. {song.title} ({song.key || ['C', 'C', 'D', 'A'][index]})</span>
+                      <span>{index + 1}. {song.title} ({song.key || ['C', 'C', 'C', 'C'][index]})</span>
                       <small>{song.slides?.length || 0} slides</small>
                     </button>
                   );
@@ -1467,11 +1467,11 @@ function ControlView() {
               <div className="section-head wide">
                 <div>
                   <span className="section-label">{t.todayLyrics}</span>
-                  <h2>{showSunday1108 ? "Sunday 11/08/26 Worship Lyrics" : (language === 'pt' ? 'Todas as letras salvas para hoje' : "All today's saved lyrics")}</h2>
-                  <small>{showSunday1108 ? "2026-11-08" : todayDate} · {todaySaveStatus || (language === 'pt' ? 'Escolha uma pasta com Criar Letras de Hoje' : "Choose a folder with Create Today's Lyrics")}</small>
+                  <h2>{showSunday1115 ? "Sunday 11/15/26 Worship Lyrics" : (language === 'pt' ? 'Todas as letras salvas para hoje' : "All today's saved lyrics")}</h2>
+                  <small>{showSunday1115 ? "2026-11-15" : todayDate} · {todaySaveStatus || (language === 'pt' ? 'Escolha uma pasta com Criar Letras de Hoje' : "Choose a folder with Create Today's Lyrics")}</small>
                   <div className="today-live-hint">{language === 'pt' ? 'Clique em qualquer verso abaixo para enviar direto ao telão.' : 'Click any verse below to send it directly to the big screen.'}</div>
                 </div>
-                <button className="secondary" onClick={() => { setShowToday(false); setShowSunday1108(false); }}>{t.backToLibrary}</button>
+                <button className="secondary" onClick={() => { setShowToday(false); setShowSunday1115(false); }}>{t.backToLibrary}</button>
               </div>
               <div className="todays-lyrics-stack">
                 {visibleSetlist.map((song, songIndex) => (
