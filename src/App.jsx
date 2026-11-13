@@ -527,6 +527,43 @@ function ControlView() {
   const t = COPY[language];
   const [lyricsList, setLyricsList] = useState(() => STARTER_LYRICS);
   const [lyricsId, setLyricsId] = useState(STARTER_LYRICS[0].id);
+  const [lyricsSearch, setLyricsSearch] = useState('');
+  const [cloudLoading, setCloudLoading] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState('');
+  const visibleLibrarySongs = lyricsList.filter((song) => {
+    const q = lyricsSearch.trim().toLocaleLowerCase();
+    return !q || [song.title, song.artist, ...(song.slides || []).map((slide) => slide.text)]
+      .some((part) => String(part || '').toLocaleLowerCase().includes(q));
+  });
+
+  async function searchCloudLyrics() {
+    setCloudLoading(true);
+    setCloudStatus('Searching Google Sheets…');
+    try {
+      const q = lyricsSearch.trim();
+      const response = await fetch('/api/lyrics' + (q ? '?q=' + encodeURIComponent(q) : ''));
+      const data = await response.json();
+      if (!response.ok || !data.ok || !Array.isArray(data.songs)) {
+        throw new Error(data.error || 'Search unavailable');
+      }
+      const matches = data.songs.filter((song) =>
+        song && song.id && song.title && Array.isArray(song.slides) && song.slides.length
+      );
+      setLyricsList((current) => {
+        const known = new Set(current.map((song) => song.id));
+        const incoming = matches.filter((song) => !known.has(song.id));
+        return [...current, ...incoming];
+      });
+      setCloudStatus(matches.length
+        ? `Found ${data.total} in Google Sheets. ${matches.length} ready in the library.`
+        : 'No matching songs found in Google Sheets.');
+    } catch (error) {
+      setCloudStatus(error.message || 'Unable to load Google Sheets.');
+    } finally {
+      setCloudLoading(false);
+    }
+  }
+
   const [liveIndex, setLiveIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [style, setStyle] = useState(DEFAULT_STYLE);
@@ -1363,8 +1400,25 @@ function ControlView() {
             <button className="icon-button" onClick={newLyrics} title={t.newLyrics}>＋</button>
           </div>
 
+          <div className="cloud-lyrics-search">
+            <label htmlFor="lyrics-db-search">Search full lyrics</label>
+            <div className="cloud-lyrics-search-row">
+              <input
+                id="lyrics-db-search"
+                type="search"
+                value={lyricsSearch}
+                onChange={(event) => setLyricsSearch(event.target.value)}
+                onKeyDown={(event) => { if (event.key === 'Enter') searchCloudLyrics(); }}
+                placeholder="Song, artist, or lyric phrase…"
+              />
+              <button className="primary" onClick={searchCloudLyrics} disabled={cloudLoading}>
+                {cloudLoading ? '…' : 'Search Sheets'}
+              </button>
+            </div>
+            {cloudStatus && <small role="status">{cloudStatus}</small>}
+          </div>
           <div className="song-list">
-            {lyricsList.map((item) => (
+            {visibleLibrarySongs.map((item) => (
               <div key={item.id} className={`song-item lyrics-item ${item.id === lyrics.id ? 'selected' : ''}`}>
                 <button
                   className="lyrics-name-button"
