@@ -121,6 +121,12 @@ export function mergeStarterLyrics(existing = []) {
   });
 
   const titles = new Set(upgraded.map((item) => normalize(item.title)));
-  const missing = STARTER_LYRICS.filter((item) => !titles.has(normalize(item.title)));
+  const existingIds = new Set(upgraded.map((item) => item.id));
+  // Distinct service editions may share a title (e.g. Rest on Us).
+  // Always install the dated setlist by stable ID, retaining older copies and user edits.
+  const missing = STARTER_LYRICS.filter((item) =>
+    !existingIds.has(item.id) &&
+    (item.id.startsWith('sunday-2026-11-15-') || !titles.has(normalize(item.title)))
+  );
   return [...upgraded, ...missing];
 }
