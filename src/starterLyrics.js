@@ -7,6 +7,7 @@ import { LORD_HAVE_MERCY } from './lordHaveMercy.js';
 import { THE_LOVE_OF_GOD } from './theLoveOfGod.js';
 import { REQUESTED_TODAY_SONGS } from './requestedTodaySongs.js';
 import { SUNDAY_2026_11_08_SONGS, BEAUTIFUL_NAME_SLIDES } from './sunday20261108Songs.js';
+import { SUNDAY_2026_11_15_SONGS } from './sunday20261115Songs.js';
 
 const makeLyrics = (id, title, artist, language = 'en') => ({
   id: `starter-${id}`,
@@ -25,6 +26,7 @@ const makeLyrics = (id, title, artist, language = 'en') => ({
 export const STARTER_LYRICS = [
   ...REQUESTED_TODAY_SONGS,
   ...SUNDAY_2026_11_08_SONGS,
+  ...SUNDAY_2026_11_15_SONGS,
   IMMORTAL_INVISIBLE,
   ONLY_A_HOLY_GOD,
   JESUS_MESSIAH,
