@@ -768,8 +768,17 @@ function ControlView() {
       event.preventDefault();
       setInstallPrompt(event);
     };
+    const installed = () => {
+      setShowInstall(false);
+      setInstallMessage('');
+      setInstallPrompt(null);
+    };
     window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', installed);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installed);
+    };
   }, []);
 
   useEffect(() => {
@@ -1112,13 +1121,23 @@ function ControlView() {
 
   async function installDesktop() {
     if (!installPrompt) {
-      setInstallMessage(t.installFallback);
+      setInstallMessage('For an app-like window, use Chrome or Edge menu → Install PraiseLyrics. For a normal browser shortcut, download the Windows shortcut below.');
       return;
     }
-    await installPrompt.prompt();
-    const result = await installPrompt.userChoice;
-    if (result?.outcome === 'accepted') setShowInstall(false);
-    setInstallPrompt(null);
+    try {
+      await installPrompt.prompt();
+      const result = await installPrompt.userChoice;
+      if (result?.outcome === 'accepted') {
+        setShowInstall(false);
+        setInstallMessage('');
+      } else {
+        setInstallMessage('Installation was cancelled. You can use the Windows desktop shortcut instead.');
+      }
+    } catch {
+      setInstallMessage('Browser installation is unavailable. Download the Windows desktop shortcut below.');
+    } finally {
+      setInstallPrompt(null);
+    }
   }
 
   function updateLyrics(mutator) {
@@ -1869,7 +1888,10 @@ function ControlView() {
           <span>{t.installPt}</span>
           {installMessage && <small>{installMessage}</small>}
           <div className="install-actions">
-            <button className="primary" onClick={installDesktop}>{t.installButton}</button>
+            <a className="primary desktop-shortcut-download" href="/PraiseLyrics.url" download="PraiseLyrics.url">
+              ⬇ Windows Desktop Shortcut
+            </a>
+            {installPrompt && <button className="secondary" onClick={installDesktop}>Install app in Chrome / Edge</button>}
             <button className="ghost" onClick={() => setShowInstall(false)}>{t.notNow}</button>
           </div>
         </div>
