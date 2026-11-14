@@ -1459,7 +1459,7 @@ function ControlView() {
       type: 'LIVE_UPDATE',
       at: Date.now(),
       lyricsTitle: verse?.reference || 'Scripture',
-      slide: !forceBlank && verse ? { id: 'bible-verse', label: verse.reference, text: verse.reference + '\\n\\n' + verse.text } : null,
+      slide: !forceBlank && verse ? { id: 'bible-verse', label: verse.reference, text: verse.reference + '\n\n' + verse.text } : null,
       style: { ...style, verticalOffset: Number(style.verticalOffset || 0) },
       blank: forceBlank
     };
