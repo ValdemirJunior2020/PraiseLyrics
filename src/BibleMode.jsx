@@ -44,7 +44,7 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
 
   async function saveBibleSettings(e) {
     e.preventDefault();
-    if (!/^\\d{4}$/.test(settingsPin)) { setSettingsMessage('Enter your four-digit PIN.'); return; }
+    if (!/^\d{4}$/.test(settingsPin)) { setSettingsMessage('Enter your four-digit PIN.'); return; }
     if (style.backgroundImage && !/^https:\/\//i.test(style.backgroundImage)) {
       setSettingsMessage('Use an HTTPS image URL for the background.'); return;
     }
@@ -256,7 +256,7 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
             <strong>Save Bible Settings</strong>
             <p>Enter the settings PIN to save only Bible appearance to Google Sheets.</p>
             <input autoFocus type="password" inputMode="numeric" maxLength={4} pattern="[0-9]{4}" autoComplete="off"
-              value={settingsPin} onChange={e=>setSettingsPin(e.target.value.replace(/\\D/g,'').slice(0,4))} placeholder="••••" aria-label="4-digit PIN"/>
+              value={settingsPin} onChange={e=>setSettingsPin(e.target.value.replace(/\D/g,'').slice(0,4))} placeholder="••••" aria-label="4-digit PIN"/>
             {settingsMessage && <small role="status">{settingsMessage}</small>}
             <div className="global-settings-actions">
               <button type="submit" className="global-confirm" disabled={settingsBusy || settingsPin.length!==4}>{settingsBusy?'Saving…':'Confirm & Save'}</button>
