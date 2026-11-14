@@ -211,7 +211,7 @@ function doPost(e) {
       // The four-digit settings PIN is stored only in Apps Script's private Script Properties.
       // Do not add it to this public repository or to browser JavaScript.
       const pin = PropertiesService.getScriptProperties().getProperty('SETTINGS_PIN');
-      if (!pin || !/^\\d{4}$/.test(pin)) return json_({ ok: false, error: 'Settings PIN not configured in Script Properties.' });
+      if (!pin || !/^\d{4}$/.test(pin)) return json_({ ok: false, error: 'Settings PIN not configured in Script Properties.' });
       const cache = CacheService.getScriptCache();
       if (Number(cache.get('settings_pin_failures') || 0) >= 5) {
         return json_({ ok: false, error: 'Too many PIN attempts. Try again in 15 minutes.' });
