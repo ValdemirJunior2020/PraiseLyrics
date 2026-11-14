@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+const BibleMode = React.lazy(() => import('./BibleMode.jsx'));
 import { STARTER_LYRICS, mergeStarterLyrics } from './starterLyrics.js';
 import { REQUESTED_TODAY_SONG_IDS } from './requestedTodaySongs.js';
 import { SUNDAY_2026_11_15_SONG_IDS } from './sunday20261115Songs.js';
@@ -524,6 +525,7 @@ function safeLyricsFileName(title) {
 
 function ControlView() {
   const [language, setLanguage] = useState('en');
+  const [workspaceMode, setWorkspaceMode] = useState('lyrics');
   const t = COPY[language];
   const [lyricsList, setLyricsList] = useState(() => STARTER_LYRICS);
   const [lyricsId, setLyricsId] = useState(STARTER_LYRICS[0].id);
@@ -868,8 +870,8 @@ function ControlView() {
   }, [lyrics, liveIndex, blank, style]);
 
   useEffect(() => {
-    sendLive(liveIndex, blank, style);
-  }, [style, sendLive, liveIndex, blank]);
+    if (workspaceMode === 'lyrics') sendLive(liveIndex, blank, style);
+  }, [style, sendLive, liveIndex, blank, workspaceMode]);
 
   useEffect(() => {
     if (lyrics && liveIndex >= lyrics.slides.length) {
@@ -880,6 +882,7 @@ function ControlView() {
 
   useEffect(() => {
     const keyHandler = (event) => {
+      if (workspaceMode === 'bible') return;
       if (event.target?.matches?.('input, textarea, select')) return;
       if (event.key === 'ArrowRight') {
         event.preventDefault();
@@ -1346,7 +1349,7 @@ function ControlView() {
     }
 
     setStatus(t.wallOpened);
-    setTimeout(() => sendLive(liveIndex, blank, style), 700);
+    if (workspaceMode === 'lyrics') setTimeout(() => sendLive(liveIndex, blank, style), 700);
   }
 
   function addSlide() {
@@ -1433,6 +1436,52 @@ function ControlView() {
       updateSelectedSlide({ backgroundImage: dataUrl });
     };
     reader.readAsDataURL(file);
+  }
+
+  function showBibleMode() {
+    setBlank(true);
+    sendLive(liveIndex, true, style);
+    setShowToday(false);
+    setShowSunday1115(false);
+    setGlobalSettingsOpen(false);
+    setWorkspaceMode('bible');
+  }
+
+  function showLyricsMode() {
+    setBlank(true);
+    sendLive(liveIndex, true, style);
+    setWorkspaceMode('lyrics');
+  }
+
+  function sendBibleVerse(verse, forceBlank = false) {
+    if (!('BroadcastChannel' in window)) return;
+    const payload = {
+      type: 'LIVE_UPDATE',
+      at: Date.now(),
+      lyricsTitle: verse?.reference || 'Scripture',
+      slide: !forceBlank && verse ? { id: 'bible-verse', label: verse.reference, text: verse.reference + '\\n\\n' + verse.text } : null,
+      style: { ...style, verticalOffset: Number(style.verticalOffset || 0) },
+      blank: forceBlank
+    };
+    const channel = new BroadcastChannel(CHANNEL_NAME);
+    channel.postMessage(payload);
+    channel.close();
+    setBlank(Boolean(forceBlank));
+  }
+
+  if (workspaceMode === 'bible') {
+    return (
+      <React.Suspense fallback={<div className="app-shell"><p>Opening Bible mode…</p></div>}>
+        <BibleMode
+          style={style}
+          setStyle={setStyle}
+          onBack={showLyricsMode}
+          onOpenWall={openWall}
+          onSendBible={sendBibleVerse}
+          onBlankBible={() => sendBibleVerse(null, true)}
+        />
+      </React.Suspense>
+    );
   }
 
   return (
@@ -1530,6 +1579,7 @@ function ControlView() {
         </div>
       )}
       <div className="savebar">
+        <button className="bible-mode-entry compact" onClick={showBibleMode}>📖 Bible Mode</button>
         <button className="sunday-1108-button compact" onClick={() => { const first = SUNDAY_2026_11_15_SONG_IDS.find((id) => lyricsList.some((song) => song.id === id)); if (first) openPlannedLyrics(first); setShowSunday1115(true); setShowToday(false); }}>11/15/26 Lyrics</button>
         <button className="secondary compact" onClick={openLocalLyrics}>📂 {t.openLocalLyrics}</button>
         <button className="secondary compact" onClick={chooseLyricsFolder}>📁 {t.chooseFolder}</button>
