@@ -178,14 +178,20 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
 
   function sendSelected() {
     if (!canSend) return;
-    onSendBible({ reference, text: selectedVerse.text, translation });
+    liveVerseRef.current = { reference, text: selectedVerse.text, translation };
+    onSendBible(liveVerseRef.current);
     setIsLive(true);
   }
 
   function openBibleWall() {
     onOpenWall();
     // The browser display may still be mounting when window.open returns.
-    if (canSend) setTimeout(() => onSendBible({ reference, text: selectedVerse.text, translation }), 1000);
+    if (canSend) {
+      const current = { reference, text: selectedVerse.text, translation };
+      liveVerseRef.current = current;
+      setIsLive(true);
+      setTimeout(() => onSendBible(current), 1000);
+    }
   }
 
   useEffect(() => {
@@ -200,6 +206,12 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
   });
 
   const changeStyle = (key, value) => setStyle(current => ({ ...current, [key]: value }));
+  // Live wall follows Bible appearance changes immediately, without an extra Show button.
+  const liveVerseRef = useRef(null);
+  useEffect(() => {
+    if (isLive && liveVerseRef.current) onSendBible(liveVerseRef.current);
+  }, [style]);
+
 
   return (
     <div className="app-shell bible-shell">
@@ -216,75 +228,6 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
           <button className="danger" onClick={() => { onBlankBible(); setIsLive(false); }}>Blank Wall</button>
         </div>
       </header>
-
-      {showAppearance && (
-        <section className="panel bible-appearance" aria-label="Bible display settings">
-          <strong>Configurações exclusivas da Bíblia · Bible-only settings</strong>
-          <div className="bible-settings-grid">
-            <label>Font size: {style.fontSize}px
-              <input type="range" min="24" max="320" value={style.fontSize} onChange={e => changeStyle('fontSize', Number(e.target.value))} />
-            </label>
-            <label>Vertical position: {style.verticalOffset || 0}
-              <input type="range" min="-45" max="45" value={style.verticalOffset || 0} onChange={e => changeStyle('verticalOffset', Number(e.target.value))} />
-            </label>
-            <label>Text width: {style.maxWidth}%
-              <input type="range" min="50" max="96" value={style.maxWidth} onChange={e => changeStyle('maxWidth', Number(e.target.value))} />
-            </label>
-            <label>Font
-              <select value={style.fontFamily} onChange={e => changeStyle('fontFamily', e.target.value)}>
-                <option value="Arial, Helvetica, sans-serif">Arial</option>
-                <option value="Georgia, serif">Georgia</option>
-                <option value="Verdana, sans-serif">Verdana</option>
-                <option value="Trebuchet MS, sans-serif">Trebuchet</option>
-                <option value="system-ui, sans-serif">System</option>
-              </select>
-            </label>
-            <label>Text color
-              <input type="color" value={style.textColor} onChange={e => changeStyle('textColor', e.target.value)} />
-            </label>
-            <label>Alignment
-              <select value={style.textAlign} onChange={e => changeStyle('textAlign', e.target.value)}>
-                <option value="center">Center</option><option value="left">Left</option><option value="right">Right</option>
-              </select>
-            </label>
-          </div>
-          <div className="bible-settings-grid">
-            <label>Background color
-              <input type="color" value={/^#[0-9a-f]{6}$/i.test(style.background || '') ? style.background : '#000000'} onChange={e => changeStyle('background',e.target.value)} />
-            </label>
-            <label>Background image URL (HTTPS)
-              <input type="url" placeholder="https://example.com/background.jpg" value={style.backgroundImage || ''} onChange={e => changeStyle('backgroundImage', e.target.value)} />
-            </label>
-            <label>Image darkness: {Math.round((style.overlay || 0)*100)}%
-              <input type="range" min="0" max="0.85" step="0.05" value={style.overlay || 0} onChange={e => changeStyle('overlay',Number(e.target.value))} />
-            </label>
-            <label>Line spacing: {style.lineHeight || 1.25}
-              <input type="range" min="0.8" max="2.5" step="0.05" value={style.lineHeight || 1.25} onChange={e => changeStyle('lineHeight',Number(e.target.value))} />
-            </label>
-            <label>Font weight
-              <select value={style.fontWeight || 700} onChange={e => changeStyle('fontWeight',Number(e.target.value))}>
-                <option value="400">Normal</option><option value="600">Semibold</option><option value="700">Bold</option><option value="800">Extra bold</option>
-              </select>
-            </label>
-            <label className="bible-checkbox"><input type="checkbox" checked={Boolean(style.textShadow)} onChange={e => changeStyle('textShadow',e.target.checked)}/> Text shadow</label>
-          </div>
-          <div className="bible-pos-buttons">
-            <button className="secondary compact" onClick={() => changeStyle('verticalOffset', Math.max(-45, Number(style.verticalOffset || 0) - 4))}>↑ Up</button>
-            <button className="secondary compact" onClick={() => changeStyle('verticalOffset', 0)}>Center</button>
-            <button className="secondary compact" onClick={() => changeStyle('verticalOffset', Math.min(45, Number(style.verticalOffset || 0) + 4))}>↓ Down</button>
-          </div>
-          <div className="bible-cloud-actions">
-            <button className="bible-send" type="button" onClick={() => { setPinPromptOpen(true); setSettingsMessage(''); }}>☁ Salvar somente a Bíblia</button>
-            <button className="secondary" type="button" onClick={() => { setStyle({
-              background:'#000000', backgroundImage:'', overlay:0.4, textColor:'#ffffff', fontSize:76,
-              fontFamily:'Arial, Helvetica, sans-serif', fontWeight:700, textAlign:'center',
-              lineHeight:1.25,textShadow:true,maxWidth:88,verticalOffset:0
-            }); }}>Reset Bible appearance</button>
-          </div>
-          {settingsMessage && <small role="status">{settingsMessage}</small>}
-          <small>Saved separately to the Google Sheets “Bible Settings” tab. Lyrics settings never change.</small>
-        </section>
-      )}
 
       {pinPromptOpen && (
         <div className="global-pin-overlay" onMouseDown={e => {if(e.target===e.currentTarget && !settingsBusy) setPinPromptOpen(false);}}>
@@ -360,7 +303,15 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
             fontWeight: style.fontWeight, lineHeight: style.lineHeight,
             background: style.backgroundImage ? `linear-gradient(rgba(0,0,0,${style.overlay}),rgba(0,0,0,${style.overlay})),url("${style.backgroundImage}") center / cover` : (style.background || '#000')
           }}>
-            {selectedVerse?.text || (loadingBooks || loadingChapter ? 'Loading…' : 'Select a verse to begin.')}
+            <div className="bible-preview-text" style={{
+              transform: `translateY(${Number(style.verticalOffset || 0) * 2.2}px)`,
+              transition: 'transform 240ms ease-out, font-size 180ms ease-out',
+              fontSize: `clamp(16px, ${Math.min(52, Number(style.fontSize||76)*0.54)}px, 60px)`,
+              maxWidth: `${style.maxWidth || 88}%`,
+              textShadow: style.textShadow ? '0 3px 5px rgba(0,0,0,.9)' : 'none'
+            }}>
+              {selectedVerse?.text || (loadingBooks || loadingChapter ? 'Loading…' : 'Select a verse to begin.')}
+            </div>
           </div>
           <div className="bible-navigation-actions">
             <button className="secondary" disabled={loadingChapter || !verses.length} onClick={() => advance(-1)}>← Previous Verse</button>
@@ -370,6 +321,112 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
           <p className="bible-navigation-hint">Keyboard: ← / → to change verses, Enter to show the selected verse.</p>
         </section>
       </main>
+      <section className="bible-settings-dock" aria-label="Bible quick presentation settings">
+        <div className="bible-dock-header">
+          <div><strong>⚙ Bible Display</strong><small>Quick adjustments · Only affects Bible verses</small></div>
+          <div className="bible-dock-header-actions">
+            <button className="secondary compact" onClick={() => setShowAppearance(open => !open)} aria-expanded={showAppearance}>{showAppearance ? 'Hide More Settings' : 'More Settings'}</button>
+            <button className="bible-send compact" onClick={() => { setPinPromptOpen(true); setSettingsMessage(''); }}>☁ Save Bible Settings</button>
+          </div>
+        </div>
+        <div className="bible-quick-tools">
+          <div className="bible-quick-control">
+            <span>Text size <b>{style.fontSize}px</b></span>
+            <div className="bible-quick-row">
+              <button className="secondary compact" aria-label="Decrease Bible font size" onClick={() => changeStyle('fontSize', Math.max(24, Number(style.fontSize || 76) - 2))}>A−</button>
+              <input type="range" min="24" max="160" step="1" aria-label="Bible font size" value={Math.min(160,Number(style.fontSize||76))} onChange={e=>changeStyle('fontSize',Number(e.target.value))}/>
+              <button className="secondary compact" aria-label="Increase Bible font size" onClick={() => changeStyle('fontSize', Math.min(320, Number(style.fontSize || 76) + 2))}>A+</button>
+            </div>
+          </div>
+          <div className="bible-quick-control bible-quick-position">
+            <span>Move verse · Fine position <b>{Number(style.verticalOffset || 0).toFixed(2)}</b></span>
+            <div className="bible-quick-row">
+              <button className="secondary compact" aria-label="Move verse up slowly" title="Move up 0.5 units" onClick={() => changeStyle('verticalOffset', Math.max(-45, Number(style.verticalOffset || 0) - 0.5))}>↑ Up</button>
+              <input type="range" min="-45" max="45" step="0.25" aria-label="Fine vertical position" value={Number(style.verticalOffset || 0)} onChange={e=>changeStyle('verticalOffset',Number(e.target.value))}/>
+              <button className="secondary compact" aria-label="Move verse down slowly" title="Move down 0.5 units" onClick={() => changeStyle('verticalOffset', Math.min(45, Number(style.verticalOffset || 0) + 0.5))}>↓ Down</button>
+              <button className="secondary compact" aria-label="Center verse vertically" onClick={() => changeStyle('verticalOffset',0)}>Center</button>
+            </div>
+            <small>Each click moves only 0.5vh. Drag the slider for 0.25vh precision.</small>
+          </div>
+          <div className="bible-quick-control bible-quick-colors">
+            <span>Colors &amp; background</span>
+            <div className="bible-quick-row">
+              <label className="bible-quick-color" title="Text color">Text <input aria-label="Bible text color" type="color" value={style.textColor} onChange={e=>changeStyle('textColor',e.target.value)}/></label>
+              <label className="bible-quick-color" title="Background color">BG <input aria-label="Bible background color" type="color" value={/^#[0-9a-f]{6}$/i.test(style.background||'')?style.background:'#000000'} onChange={e=>changeStyle('background',e.target.value)}/></label>
+              <button className="secondary compact" onClick={()=>setShowAppearance(true)}>🖼 Image URL</button>
+            </div>
+          </div>
+        </div>
+        {settingsMessage && <small role="status" className="bible-settings-status">{settingsMessage}</small>}
+        {showAppearance && (
+        <section className="panel bible-appearance bible-advanced" aria-label="Bible display settings">
+          <strong>Configurações exclusivas da Bíblia · Bible-only settings</strong>
+          <div className="bible-settings-grid">
+            <label>Font size: {style.fontSize}px
+              <input type="range" min="24" max="320" value={style.fontSize} onChange={e => changeStyle('fontSize', Number(e.target.value))} />
+            </label>
+            <label>Vertical position: {style.verticalOffset || 0}
+              <input type="range" min="-45" max="45" value={style.verticalOffset || 0} onChange={e => changeStyle('verticalOffset', Number(e.target.value))} />
+            </label>
+            <label>Text width: {style.maxWidth}%
+              <input type="range" min="50" max="96" value={style.maxWidth} onChange={e => changeStyle('maxWidth', Number(e.target.value))} />
+            </label>
+            <label>Font
+              <select value={style.fontFamily} onChange={e => changeStyle('fontFamily', e.target.value)}>
+                <option value="Arial, Helvetica, sans-serif">Arial</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+                <option value="Trebuchet MS, sans-serif">Trebuchet</option>
+                <option value="system-ui, sans-serif">System</option>
+              </select>
+            </label>
+            <label>Text color
+              <input type="color" value={style.textColor} onChange={e => changeStyle('textColor', e.target.value)} />
+            </label>
+            <label>Alignment
+              <select value={style.textAlign} onChange={e => changeStyle('textAlign', e.target.value)}>
+                <option value="center">Center</option><option value="left">Left</option><option value="right">Right</option>
+              </select>
+            </label>
+          </div>
+          <div className="bible-settings-grid">
+            <label>Background color
+              <input type="color" value={/^#[0-9a-f]{6}$/i.test(style.background || '') ? style.background : '#000000'} onChange={e => changeStyle('background',e.target.value)} />
+            </label>
+            <label>Background image URL (HTTPS)
+              <input type="url" placeholder="https://example.com/background.jpg" value={style.backgroundImage || ''} onChange={e => changeStyle('backgroundImage', e.target.value)} />
+            </label>
+            <label>Image darkness: {Math.round((style.overlay || 0)*100)}%
+              <input type="range" min="0" max="0.85" step="0.05" value={style.overlay || 0} onChange={e => changeStyle('overlay',Number(e.target.value))} />
+            </label>
+            <label>Line spacing: {style.lineHeight || 1.25}
+              <input type="range" min="0.8" max="2.5" step="0.05" value={style.lineHeight || 1.25} onChange={e => changeStyle('lineHeight',Number(e.target.value))} />
+            </label>
+            <label>Font weight
+              <select value={style.fontWeight || 700} onChange={e => changeStyle('fontWeight',Number(e.target.value))}>
+                <option value="400">Normal</option><option value="600">Semibold</option><option value="700">Bold</option><option value="800">Extra bold</option>
+              </select>
+            </label>
+            <label className="bible-checkbox"><input type="checkbox" checked={Boolean(style.textShadow)} onChange={e => changeStyle('textShadow',e.target.checked)}/> Text shadow</label>
+          </div>
+          <div className="bible-pos-buttons">
+            <button className="secondary compact" onClick={() => changeStyle('verticalOffset', Math.max(-45, Number(style.verticalOffset || 0) - 4))}>↑ Up</button>
+            <button className="secondary compact" onClick={() => changeStyle('verticalOffset', 0)}>Center</button>
+            <button className="secondary compact" onClick={() => changeStyle('verticalOffset', Math.min(45, Number(style.verticalOffset || 0) + 4))}>↓ Down</button>
+          </div>
+          <div className="bible-cloud-actions">
+            <button className="bible-send" type="button" onClick={() => { setPinPromptOpen(true); setSettingsMessage(''); }}>☁ Salvar somente a Bíblia</button>
+            <button className="secondary" type="button" onClick={() => { setStyle({
+              background:'#000000', backgroundImage:'', overlay:0.4, textColor:'#ffffff', fontSize:76,
+              fontFamily:'Arial, Helvetica, sans-serif', fontWeight:700, textAlign:'center',
+              lineHeight:1.25,textShadow:true,maxWidth:88,verticalOffset:0
+            }); }}>Reset Bible appearance</button>
+          </div>
+          {settingsMessage && <small role="status">{settingsMessage}</small>}
+          <small>Saved separately to the Google Sheets “Bible Settings” tab. Lyrics settings never change.</small>
+        </section>
+      )}
+      </section>
     </div>
   );
 }
