@@ -83,3 +83,5 @@ The existing browser/library songs remain available when the external database i
 Global appearance controls require the current Apps Script deployment and a private `SETTINGS_PIN` Script Property in Google Apps Script; setting the Netlify API URL alone does not configure the PIN.
 
 The Apps Script deployment URL is configured through Netlify environment settings; updates to that value require a fresh production deploy before the functions are guaranteed to use the new endpoint.
+
+Bible Settings uses the latest deployed Apps Script URL supplied through Netlify's `PRAISELYRICS_APPS_SCRIPT_URL` configuration; redeploy production after changing it.
