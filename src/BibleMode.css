@@ -84,3 +84,27 @@
 .bible-import-nkjv .bible-import-file input { display:none; }
 @media (max-width:1060px){.bible-quick-tools{grid-template-columns:1fr 1.4fr}.bible-quick-colors{grid-column:1/-1}.bible-quick-colors .bible-quick-row{justify-content:flex-start}}
 @media (max-width:640px){.bible-settings-dock{padding:11px}.bible-quick-tools{grid-template-columns:1fr}.bible-quick-colors{grid-column:auto}.bible-quick-row button{font-size:11px}.bible-dock-header-actions{width:100%}.bible-dock-header-actions button{flex:1}.bible-advanced .bible-settings-grid{grid-template-columns:1fr}}
+
+
+/* Compact Bible editor: no full-width, full-height settings panel above Scripture. */
+.bible-mini-advanced {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  align-items:end;
+  border-top:1px solid #263847;
+  padding-top:12px;
+}
+.bible-mini-advanced label {min-width:0; display:grid; gap:5px; font-size:11px; color:#b9cfde; font-weight:650;}
+.bible-mini-advanced label span {color:#86efac;}
+.bible-mini-advanced select,.bible-mini-advanced input[type=url] {
+  width:100%; min-height:34px; border:1px solid #344457; border-radius:8px;
+  padding:5px 7px; background:#101927; color:#f8fafc; font-size:12px;
+}
+.bible-mini-advanced input[type=range]{width:100%; min-width:0; accent-color:#22c55e;}
+.bible-mini-advanced .bible-mini-check{display:flex;align-items:center;gap:7px;}
+.bible-mini-advanced .bible-mini-check input{accent-color:#22c55e;}
+.bible-mini-advanced .bible-mini-image{grid-column:span 2;}
+.bible-settings-dock {scroll-margin-top:20px;}
+@media(max-width:900px){.bible-mini-advanced{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:520px){.bible-mini-advanced{grid-template-columns:1fr}.bible-mini-advanced .bible-mini-image{grid-column:auto;}}
