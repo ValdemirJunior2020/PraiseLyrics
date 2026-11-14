@@ -8,7 +8,7 @@
  * 4. Copy the /exec URL into Netlify env PRAISELYRICS_APPS_SCRIPT_URL.
  *
  * Public GET is read-only. POST is disabled until you explicitly set a random
- * ADMIN_WRITE_TOKEN in Apps Script > Project Settings > Script Properties.
+ * ADMIN_WRITE_TOKEN in Apps Script > Project Settings > Script Properties.\n * Global appearance saves use a separate SETTINGS_PIN Script Property.
  * NEVER expose that token in browser React code or VITE_* variables.
  */
 const CONFIG = Object.freeze({
@@ -171,14 +171,27 @@ function doGet(e) {
 function doPost(e) {
   const lock = LockService.getScriptLock();
   try {
-    const token = PropertiesService.getScriptProperties().getProperty('ADMIN_WRITE_TOKEN');
-    if (!token || token.length < 24) return json_({ ok: false, error: 'Writes disabled.' });
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
-    if (body.token !== token) return json_({ ok: false, error: 'Unauthorized.' });
     if (body.action === 'saveSettings') {
+      // The four-digit settings PIN is stored only in Apps Script's private Script Properties.
+      // Do not add it to this public repository or to browser JavaScript.
+      const pin = PropertiesService.getScriptProperties().getProperty('SETTINGS_PIN');
+      if (!pin || !/^\\d{4}$/.test(pin)) return json_({ ok: false, error: 'Settings PIN not configured in Script Properties.' });
+      const cache = CacheService.getScriptCache();
+      if (Number(cache.get('settings_pin_failures') || 0) >= 5) {
+        return json_({ ok: false, error: 'Too many PIN attempts. Try again in 15 minutes.' });
+      }
+      if (String(body.pin || '') !== pin) {
+        cache.put('settings_pin_failures', String(Number(cache.get('settings_pin_failures') || 0) + 1), 900);
+        return json_({ ok: false, error: 'Incorrect PIN.' });
+      }
       lock.waitLock(15000);
+      cache.remove('settings_pin_failures');
       return json_({ ok: true, ...saveDisplaySettings_(body.settings) });
     }
+    const token = PropertiesService.getScriptProperties().getProperty('ADMIN_WRITE_TOKEN');
+    if (!token || token.length < 24) return json_({ ok: false, error: 'Writes disabled.' });
+    if (body.token !== token) return json_({ ok: false, error: 'Unauthorized.' });
     if (body.action !== 'upsert') return json_({ ok: false, error: 'Unsupported action.' });
     const song = body.song || {};
     const title = String(song.title || '').trim();
