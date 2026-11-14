@@ -33,6 +33,11 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
   const [error, setError] = useState('');
   const [isLive, setIsLive] = useState(false);
   const [showAppearance, setShowAppearance] = useState(false);
+  const settingsDockRef = useRef(null);
+  useEffect(() => {
+    if (showAppearance) settingsDockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [showAppearance]);
+
   const [settingsPin, setSettingsPin] = useState('');
   const [pinPromptOpen, setPinPromptOpen] = useState(false);
   const [settingsBusy, setSettingsBusy] = useState(false);
@@ -321,7 +326,7 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
           <p className="bible-navigation-hint">Keyboard: ← / → to change verses, Enter to show the selected verse.</p>
         </section>
       </main>
-      <section className="bible-settings-dock" aria-label="Bible quick presentation settings">
+      <section className="bible-settings-dock" ref={settingsDockRef} aria-label="Bible quick presentation settings">
         <div className="bible-dock-header">
           <div><strong>⚙ Bible Display</strong><small>Quick adjustments · Only affects Bible verses</small></div>
           <div className="bible-dock-header-actions">
