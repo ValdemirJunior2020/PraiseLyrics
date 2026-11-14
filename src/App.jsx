@@ -397,7 +397,7 @@ function getSlideStyle(lyrics, slideIndex, style) {
     ...style,
     background: slide.background ?? style.background,
     backgroundImage: slide.backgroundImage ?? lyrics?.backgroundImage ?? style.backgroundImage,
-    verticalOffset: slide.verticalOffset ?? style.verticalOffset ?? 0,
+    verticalOffset: style.useGlobalVerticalOffset ? (style.verticalOffset ?? 0) : (slide.verticalOffset ?? style.verticalOffset ?? 0),
   };
 }
 
@@ -1439,9 +1439,18 @@ function ControlView() {
                 <label>Font size <strong>{style.fontSize}px</strong>
                   <input type="range" min="24" max="320" value={style.fontSize} onChange={(e) => setStyle((current) => ({ ...current, fontSize: Number(e.target.value) }))} />
                 </label>
-                <label>Move lyrics up / down <strong>{style.verticalOffset || 0}</strong>
-                  <input type="range" min="-45" max="45" value={style.verticalOffset || 0} onChange={(e) => setStyle((current) => ({ ...current, verticalOffset: Number(e.target.value) }))} />
-                </label>
+                <div className="global-vertical-controls">
+                  <div className="global-vertical-header"><strong>Vertical position</strong><span>{style.verticalOffset || 0}</span></div>
+                  <div className="global-vertical-row">
+                    <button type="button" className="secondary compact" aria-label="Move all lyrics up" onClick={() => setStyle((current) => ({ ...current, useGlobalVerticalOffset: true, verticalOffset: Math.max(-45, Number(current.verticalOffset || 0) - 4) }))}>↑ Up</button>
+                    <input aria-label="Global vertical position" type="range" min="-45" max="45" step="1" value={style.verticalOffset || 0} onChange={(e) => setStyle((current) => ({ ...current, useGlobalVerticalOffset: true, verticalOffset: Number(e.target.value) }))} />
+                    <button type="button" className="secondary compact" aria-label="Move all lyrics down" onClick={() => setStyle((current) => ({ ...current, useGlobalVerticalOffset: true, verticalOffset: Math.min(45, Number(current.verticalOffset || 0) + 4) }))}>↓ Down</button>
+                  </div>
+                  <div className="global-vertical-footer">
+                    <small>Applies to every verse, overriding individual verse positioning when saved.</small>
+                    <button type="button" className="secondary compact" onClick={() => setStyle((current) => ({ ...current, useGlobalVerticalOffset: true, verticalOffset: 0 }))}>Center</button>
+                  </div>
+                </div>
                 <div className="global-settings-two">
                   <label>Text color
                     <input type="color" value={style.textColor} onChange={(e) => setStyle((current) => ({ ...current, textColor: e.target.value }))} />
