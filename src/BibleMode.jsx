@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './BibleMode.css';
 
 const TRANSLATIONS = [
+  { code: 'NKJV', label: '⭐ NKJV — favorite (licensed source needed)', disabled: true },
   { code: 'KJV', label: '🇺🇸 English — KJV' },
   { code: 'ALMEIDA-RC', label: '🇧🇷 Português — Almeida' },
   { code: 'RV1909', label: '🇪🇸 Español — Reina-Valera 1909' },
@@ -28,6 +29,41 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
   const [error, setError] = useState('');
   const [isLive, setIsLive] = useState(false);
   const [showAppearance, setShowAppearance] = useState(false);
+  const [settingsPin, setSettingsPin] = useState('');
+  const [pinPromptOpen, setPinPromptOpen] = useState(false);
+  const [settingsBusy, setSettingsBusy] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState('');
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/bible-settings', { signal: controller.signal, cache: 'no-store' })
+      .then(async r => {const data = await r.json(); if(!r.ok || !data.ok) throw Error(data.error || 'Could not load Bible settings'); return data;})
+      .then(data => { if (data.settings && !controller.signal.aborted) setStyle(current => ({ ...current, ...data.settings })); })
+      .catch(e => { if(e.name!=='AbortError') setSettingsMessage('Using local Bible settings. Cloud: '+e.message); });
+    return () => controller.abort();
+  }, [setStyle]);
+
+  async function saveBibleSettings(e) {
+    e.preventDefault();
+    if (!/^\\d{4}$/.test(settingsPin)) { setSettingsMessage('Enter your four-digit PIN.'); return; }
+    if (style.backgroundImage && !/^https:\/\//i.test(style.backgroundImage)) {
+      setSettingsMessage('Use an HTTPS image URL for the background.'); return;
+    }
+    setSettingsBusy(true);
+    setSettingsMessage('');
+    try {
+      const res = await fetch('/api/bible-settings', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ pin:settingsPin, settings:style })
+      });
+      const result = await res.json();
+      if (!res.ok || !result.ok) throw Error(result.error || 'Unable to save Bible settings');
+      setSettingsMessage('✓ Bible settings saved in the Bible Settings tab.');
+      setPinPromptOpen(false);
+      setShowAppearance(false);
+    } catch(e){setSettingsMessage(e.message || 'Save failed');}
+    finally {setSettingsPin('');setSettingsBusy(false);}
+  }
+
   const [retryCount, setRetryCount] = useState(0);
   const chooseLastAfterLoad = useRef(false);
   const nextRequest = useRef(0);
@@ -147,7 +183,7 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
 
       {showAppearance && (
         <section className="panel bible-appearance" aria-label="Bible display settings">
-          <strong>Same presentation settings used for lyrics</strong>
+          <strong>Configurações exclusivas da Bíblia · Bible-only settings</strong>
           <div className="bible-settings-grid">
             <label>Font size: {style.fontSize}px
               <input type="range" min="24" max="320" value={style.fontSize} onChange={e => changeStyle('fontSize', Number(e.target.value))} />
@@ -176,21 +212,65 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
               </select>
             </label>
           </div>
+          <div className="bible-settings-grid">
+            <label>Background color
+              <input type="color" value={/^#[0-9a-f]{6}$/i.test(style.background || '') ? style.background : '#000000'} onChange={e => changeStyle('background',e.target.value)} />
+            </label>
+            <label>Background image URL (HTTPS)
+              <input type="url" placeholder="https://example.com/background.jpg" value={style.backgroundImage || ''} onChange={e => changeStyle('backgroundImage', e.target.value)} />
+            </label>
+            <label>Image darkness: {Math.round((style.overlay || 0)*100)}%
+              <input type="range" min="0" max="0.85" step="0.05" value={style.overlay || 0} onChange={e => changeStyle('overlay',Number(e.target.value))} />
+            </label>
+            <label>Line spacing: {style.lineHeight || 1.25}
+              <input type="range" min="0.8" max="2.5" step="0.05" value={style.lineHeight || 1.25} onChange={e => changeStyle('lineHeight',Number(e.target.value))} />
+            </label>
+            <label>Font weight
+              <select value={style.fontWeight || 700} onChange={e => changeStyle('fontWeight',Number(e.target.value))}>
+                <option value="400">Normal</option><option value="600">Semibold</option><option value="700">Bold</option><option value="800">Extra bold</option>
+              </select>
+            </label>
+            <label className="bible-checkbox"><input type="checkbox" checked={Boolean(style.textShadow)} onChange={e => changeStyle('textShadow',e.target.checked)}/> Text shadow</label>
+          </div>
           <div className="bible-pos-buttons">
             <button className="secondary compact" onClick={() => changeStyle('verticalOffset', Math.max(-45, Number(style.verticalOffset || 0) - 4))}>↑ Up</button>
             <button className="secondary compact" onClick={() => changeStyle('verticalOffset', 0)}>Center</button>
             <button className="secondary compact" onClick={() => changeStyle('verticalOffset', Math.min(45, Number(style.verticalOffset || 0) + 4))}>↓ Down</button>
           </div>
-          <small>The existing shared profile and local browser backup are preserved.</small>
+          <div className="bible-cloud-actions">
+            <button className="bible-send" type="button" onClick={() => { setPinPromptOpen(true); setSettingsMessage(''); }}>☁ Salvar somente a Bíblia</button>
+            <button className="secondary" type="button" onClick={() => { setStyle({
+              background:'#000000', backgroundImage:'', overlay:0.4, textColor:'#ffffff', fontSize:76,
+              fontFamily:'Arial, Helvetica, sans-serif', fontWeight:700, textAlign:'center',
+              lineHeight:1.25,textShadow:true,maxWidth:88,verticalOffset:0
+            }); }}>Reset Bible appearance</button>
+          </div>
+          {settingsMessage && <small role="status">{settingsMessage}</small>}
+          <small>Saved separately to the Google Sheets “Bible Settings” tab. Lyrics settings never change.</small>
         </section>
       )}
 
+      {pinPromptOpen && (
+        <div className="global-pin-overlay" onMouseDown={e => {if(e.target===e.currentTarget && !settingsBusy) setPinPromptOpen(false);}}>
+          <form className="global-pin-dialog" role="dialog" aria-modal="true" aria-label="Save Bible Settings" onSubmit={saveBibleSettings}>
+            <strong>Save Bible Settings</strong>
+            <p>Enter the settings PIN to save only Bible appearance to Google Sheets.</p>
+            <input autoFocus type="password" inputMode="numeric" maxLength={4} pattern="[0-9]{4}" autoComplete="off"
+              value={settingsPin} onChange={e=>setSettingsPin(e.target.value.replace(/\\D/g,'').slice(0,4))} placeholder="••••" aria-label="4-digit PIN"/>
+            {settingsMessage && <small role="status">{settingsMessage}</small>}
+            <div className="global-settings-actions">
+              <button type="submit" className="global-confirm" disabled={settingsBusy || settingsPin.length!==4}>{settingsBusy?'Saving…':'Confirm & Save'}</button>
+              <button type="button" className="secondary" onClick={()=>{setSettingsPin('');setPinPromptOpen(false);}}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
       <main className="bible-workspace">
         <section className="panel bible-navigator">
           <div className="bible-mode-label">SELECT SCRIPTURE</div>
           <label>Translation
             <select value={translation} onChange={e => setTranslation(e.target.value)}>
-              {TRANSLATIONS.map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
+              {TRANSLATIONS.map(t => <option key={t.code} value={t.code} disabled={t.disabled}>{t.label}</option>)}
             </select>
           </label>
           <label>Book
@@ -217,7 +297,7 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
           </div>
           {loadingBooks || loadingChapter ? <p role="status" className="bible-status">Loading Scripture…</p> : null}
           {error && <p role="alert" className="bible-error">{error} <button className="secondary compact" onClick={() => setRetryCount(count => count + 1)}>Retry</button></p>}
-          <small>Source: VERSE-FLOW. Translations load only when selected.</small>
+          <small>Source: VERSE-FLOW. Translations load only when selected. NKJV is pinned as favorite, but displaying its copyrighted text requires a licensed provider.</small>
         </section>
 
         <section className="panel bible-reading">
@@ -229,7 +309,11 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
             </div>
             {isLive && <span className="bible-live">● LIVE</span>}
           </div>
-          <div className="bible-reading-verse" style={{ fontFamily: style.fontFamily, textAlign: style.textAlign, color: style.textColor, background: style.background || '#000' }}>
+          <div className="bible-reading-verse" style={{
+            fontFamily: style.fontFamily, textAlign: style.textAlign, color: style.textColor,
+            fontWeight: style.fontWeight, lineHeight: style.lineHeight,
+            background: style.backgroundImage ? `linear-gradient(rgba(0,0,0,${style.overlay}),rgba(0,0,0,${style.overlay})),url("${style.backgroundImage}") center / cover` : (style.background || '#000')
+          }}>
             {selectedVerse?.text || (loadingBooks || loadingChapter ? 'Loading…' : 'Select a verse to begin.')}
           </div>
           <div className="bible-navigation-actions">
