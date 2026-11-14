@@ -27,7 +27,7 @@ export default async function handler(request) {
       return reply(result);
     }
     const body = await request.json();
-    if (typeof body.pin !== 'string' || !/^\\d{4}$/.test(body.pin) ||
+    if (typeof body.pin !== 'string' || !/^\d{4}$/.test(body.pin) ||
         !body.settings || typeof body.settings !== 'object') {
       return reply({ ok: false, error: 'Enter the 4-digit PIN to save settings.' }, 400);
     }
