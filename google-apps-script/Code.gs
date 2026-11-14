@@ -46,7 +46,7 @@ const DISPLAY_PROFILE = 'default';
 const SETTINGS_KEYS = [
   'background', 'backgroundImage', 'overlay', 'textColor', 'fontSize',
   'fontFamily', 'fontWeight', 'textAlign', 'lineHeight', 'textShadow',
-  'maxWidth', 'verticalOffset'
+  'maxWidth', 'verticalOffset', 'useGlobalVerticalOffset'
 ];
 
 function getDisplaySettingsSheet_() {
@@ -69,7 +69,7 @@ function sanitizeDisplaySettings_(value) {
       const num = Number(v);
       if (!Number.isFinite(num)) throw new Error('Invalid numeric value: ' + key);
       safe[key] = Math.max(numeric[key][0], Math.min(numeric[key][1], num));
-    } else if (key === 'textShadow') {
+    } else if (key === 'textShadow' || key === 'useGlobalVerticalOffset') {
       safe[key] = Boolean(v);
     } else if (key === 'textAlign') {
       if (!['left','right','center'].includes(v)) throw new Error('Invalid alignment.');
