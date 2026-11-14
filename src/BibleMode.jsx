@@ -1,0 +1,244 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import './BibleMode.css';
+
+const TRANSLATIONS = [
+  { code: 'KJV', label: '🇺🇸 English — KJV' },
+  { code: 'ALMEIDA-RC', label: '🇧🇷 Português — Almeida' },
+  { code: 'RV1909', label: '🇪🇸 Español — Reina-Valera 1909' },
+];
+
+async function requestBible(params, signal) {
+  const url = new URL('/api/bible', window.location.origin);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+  const response = await fetch(url, { signal });
+  const body = await response.json();
+  if (!response.ok || !body.ok) throw new Error(body.error || 'Bible is unavailable.');
+  return body;
+}
+
+export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendBible, onBlankBible }) {
+  const [translation, setTranslation] = useState('KJV');
+  const [books, setBooks] = useState([]);
+  const [book, setBook] = useState('');
+  const [chapter, setChapter] = useState(1);
+  const [verseNumber, setVerseNumber] = useState(1);
+  const [verses, setVerses] = useState([]);
+  const [loadingBooks, setLoadingBooks] = useState(true);
+  const [loadingChapter, setLoadingChapter] = useState(false);
+  const [error, setError] = useState('');
+  const [isLive, setIsLive] = useState(false);
+  const [showAppearance, setShowAppearance] = useState(false);
+  const chooseLastAfterLoad = useRef(false);
+  const nextRequest = useRef(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoadingBooks(true);
+    setError('');
+    setBooks([]);
+    setBook('');
+    setVerses([]);
+    setChapter(1);
+    setVerseNumber(1);
+    setIsLive(false);
+    requestBible({ action: 'books', translation }, controller.signal)
+      .then((data) => {
+        const available = data.books || [];
+        setBooks(available);
+        setBook(available[0]?.name || '');
+      })
+      .catch((e) => { if (e.name !== 'AbortError') setError(e.message); })
+      .finally(() => { if (!controller.signal.aborted) setLoadingBooks(false); });
+    return () => controller.abort();
+  }, [translation]);
+
+  useEffect(() => {
+    if (!book) return undefined;
+    const controller = new AbortController();
+    const id = ++nextRequest.current;
+    setLoadingChapter(true);
+    setVerses([]);
+    setError('');
+    requestBible({ action: 'chapter', translation, book, chapter }, controller.signal)
+      .then((data) => {
+        if (id !== nextRequest.current) return;
+        const list = (data.verses || []).filter(v => Number.isInteger(Number(v.number)));
+        setVerses(list);
+        setVerseNumber(chooseLastAfterLoad.current && list.length ? list[list.length - 1].number : 1);
+        chooseLastAfterLoad.current = false;
+      })
+      .catch((e) => { if (e.name !== 'AbortError') setError(e.message); })
+      .finally(() => { if (!controller.signal.aborted) setLoadingChapter(false); });
+    return () => controller.abort();
+  }, [translation, book, chapter]);
+
+  const bookIndex = books.findIndex(b => b.name === book);
+  const totalChapters = books[bookIndex]?.chapters || 1;
+  const selectedVerse = useMemo(() => verses.find(v => v.number === Number(verseNumber)), [verses, verseNumber]);
+  const reference = `${book} ${chapter}:${verseNumber}`;
+  const canSend = Boolean(selectedVerse?.text) && !loadingChapter && !error;
+
+  function chooseBook(name) { chooseLastAfterLoad.current = false; setIsLive(false); setBook(name); setChapter(1); setVerseNumber(1); }
+  function chooseChapter(number) { chooseLastAfterLoad.current = false; setIsLive(false); setChapter(number); setVerseNumber(1); }
+  function chooseVerse(number) { setIsLive(false); setVerseNumber(number); }
+
+  function advance(direction) {
+    if (loadingBooks || loadingChapter || !books.length || !verses.length) return;
+    const idx = verses.findIndex(v => v.number === Number(verseNumber));
+    const next = idx + direction;
+    if (next >= 0 && next < verses.length) { chooseVerse(verses[next].number); return; }
+    if (direction > 0) {
+      if (chapter < totalChapters) chooseChapter(chapter + 1);
+      else if (bookIndex + 1 < books.length) chooseBook(books[bookIndex + 1].name);
+    } else if (chapter > 1) {
+      chooseLastAfterLoad.current = true;
+      setIsLive(false);
+      setChapter(chapter - 1);
+    } else if (bookIndex > 0) {
+      const prev = books[bookIndex - 1];
+      chooseLastAfterLoad.current = true;
+      setIsLive(false);
+      setBook(prev.name);
+      setChapter(prev.chapters);
+    }
+  }
+
+  function sendSelected() {
+    if (!canSend) return;
+    onSendBible({ reference, text: selectedVerse.text, translation });
+    setIsLive(true);
+  }
+
+  function openBibleWall() {
+    onOpenWall();
+    // The browser display may still be mounting when window.open returns.
+    if (canSend) setTimeout(() => onSendBible({ reference, text: selectedVerse.text, translation }), 1000);
+  }
+
+  useEffect(() => {
+    const handleKey = (event) => {
+      if (event.target?.closest?.('input,select,textarea,button') || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key === 'ArrowRight') { event.preventDefault(); advance(1); }
+      else if (event.key === 'ArrowLeft') { event.preventDefault(); advance(-1); }
+      else if (event.key === 'Enter' && canSend) { event.preventDefault(); sendSelected(); }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  });
+
+  const changeStyle = (key, value) => setStyle(current => ({ ...current, [key]: value }));
+
+  return (
+    <div className="app-shell bible-shell">
+      <header className="bible-topbar">
+        <div>
+          <div className="eyebrow">PRAISELYRICS · SCRIPTURE</div>
+          <h1>Bible Presenter</h1>
+          <p>Choose a book, chapter and verse — one verse per TV screen.</p>
+        </div>
+        <div className="bible-topbar-actions">
+          <button className="secondary" onClick={onBack}>♫ Back to Lyrics</button>
+          <button className="secondary" onClick={() => setShowAppearance(current => !current)} aria-expanded={showAppearance}>⚙ Display Settings</button>
+          <button className="primary" onClick={openBibleWall}>Open Wall</button>
+          <button className="danger" onClick={() => { onBlankBible(); setIsLive(false); }}>Blank Wall</button>
+        </div>
+      </header>
+
+      {showAppearance && (
+        <section className="panel bible-appearance" aria-label="Bible display settings">
+          <strong>Same presentation settings used for lyrics</strong>
+          <div className="bible-settings-grid">
+            <label>Font size: {style.fontSize}px
+              <input type="range" min="24" max="320" value={style.fontSize} onChange={e => changeStyle('fontSize', Number(e.target.value))} />
+            </label>
+            <label>Vertical position: {style.verticalOffset || 0}
+              <input type="range" min="-45" max="45" value={style.verticalOffset || 0} onChange={e => changeStyle('verticalOffset', Number(e.target.value))} />
+            </label>
+            <label>Text width: {style.maxWidth}%
+              <input type="range" min="50" max="96" value={style.maxWidth} onChange={e => changeStyle('maxWidth', Number(e.target.value))} />
+            </label>
+            <label>Font
+              <select value={style.fontFamily} onChange={e => changeStyle('fontFamily', e.target.value)}>
+                <option value="Arial, Helvetica, sans-serif">Arial</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+                <option value="Trebuchet MS, sans-serif">Trebuchet</option>
+                <option value="system-ui, sans-serif">System</option>
+              </select>
+            </label>
+            <label>Text color
+              <input type="color" value={style.textColor} onChange={e => changeStyle('textColor', e.target.value)} />
+            </label>
+            <label>Alignment
+              <select value={style.textAlign} onChange={e => changeStyle('textAlign', e.target.value)}>
+                <option value="center">Center</option><option value="left">Left</option><option value="right">Right</option>
+              </select>
+            </label>
+          </div>
+          <div className="bible-pos-buttons">
+            <button className="secondary compact" onClick={() => changeStyle('verticalOffset', Math.max(-45, Number(style.verticalOffset || 0) - 4))}>↑ Up</button>
+            <button className="secondary compact" onClick={() => changeStyle('verticalOffset', 0)}>Center</button>
+            <button className="secondary compact" onClick={() => changeStyle('verticalOffset', Math.min(45, Number(style.verticalOffset || 0) + 4))}>↓ Down</button>
+          </div>
+          <small>The existing shared profile and local browser backup are preserved.</small>
+        </section>
+      )}
+
+      <main className="bible-workspace">
+        <section className="panel bible-navigator">
+          <div className="bible-mode-label">SELECT SCRIPTURE</div>
+          <label>Translation
+            <select value={translation} onChange={e => setTranslation(e.target.value)}>
+              {TRANSLATIONS.map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
+            </select>
+          </label>
+          <label>Book
+            <select value={book} disabled={!books.length || loadingBooks} onChange={e => chooseBook(e.target.value)}>
+              {books.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
+            </select>
+          </label>
+          <div className="bible-chooser-pair">
+            <label>Chapter
+              <select value={chapter} disabled={!book || loadingChapter} onChange={e => chooseChapter(Number(e.target.value))}>
+                {Array.from({ length: totalChapters }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
+              </select>
+            </label>
+            <label>Verse
+              <select value={verseNumber} disabled={!verses.length || loadingChapter} onChange={e => chooseVerse(Number(e.target.value))}>
+                {verses.map(v => <option key={v.number} value={v.number}>{v.number}</option>)}
+              </select>
+            </label>
+          </div>
+          <div className="bible-chapter-controls">
+            <button className="secondary compact" disabled={loadingChapter || !books.length || (bookIndex === 0 && chapter === 1)} onClick={() => { if (chapter > 1) chooseChapter(chapter - 1); else if (bookIndex > 0) { setBook(books[bookIndex - 1].name); setChapter(books[bookIndex - 1].chapters); } }}>← Chapter</button>
+            <span>Chapter {chapter} of {totalChapters}</span>
+            <button className="secondary compact" disabled={loadingChapter || !books.length || (bookIndex === books.length - 1 && chapter === totalChapters)} onClick={() => { if (chapter < totalChapters) chooseChapter(chapter + 1); else if (bookIndex + 1 < books.length) chooseBook(books[bookIndex + 1].name); }}>Chapter →</button>
+          </div>
+          {loadingBooks || loadingChapter ? <p role="status" className="bible-status">Loading Scripture…</p> : null}
+          {error && <p role="alert" className="bible-error">{error} <button className="secondary compact" onClick={() => setTranslation(prev => { setBook(''); return prev === 'KJV' ? 'ALMEIDA-RC' : 'KJV'; })}>Retry</button></p>}
+          <small>Source: VERSE-FLOW. Translations load only when selected.</small>
+        </section>
+
+        <section className="panel bible-reading">
+          <div className="bible-reading-head">
+            <div>
+              <div className="section-label">SCRIPTURE PREVIEW</div>
+              <h2>{book ? reference : 'Choose a Bible passage'}</h2>
+              <small>{TRANSLATIONS.find(t => t.code === translation)?.label}</small>
+            </div>
+            {isLive && <span className="bible-live">● LIVE</span>}
+          </div>
+          <div className="bible-reading-verse" style={{ fontFamily: style.fontFamily, textAlign: style.textAlign, color: style.textColor, background: style.background || '#000' }}>
+            {selectedVerse?.text || (loadingBooks || loadingChapter ? 'Loading…' : 'Select a verse to begin.')}
+          </div>
+          <div className="bible-navigation-actions">
+            <button className="secondary" disabled={loadingChapter || !verses.length} onClick={() => advance(-1)}>← Previous Verse</button>
+            <button className="bible-send" disabled={!canSend} onClick={sendSelected}>Show Verse on TV</button>
+            <button className="secondary" disabled={loadingChapter || !verses.length} onClick={() => advance(1)}>Next Verse →</button>
+          </div>
+          <p className="bible-navigation-hint">Keyboard: ← / → to change verses, Enter to show the selected verse.</p>
+        </section>
+      </main>
+    </div>
+  );
+}
