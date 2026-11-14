@@ -28,6 +28,7 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
   const [error, setError] = useState('');
   const [isLive, setIsLive] = useState(false);
   const [showAppearance, setShowAppearance] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const chooseLastAfterLoad = useRef(false);
   const nextRequest = useRef(0);
 
@@ -50,7 +51,7 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
       .catch((e) => { if (e.name !== 'AbortError') setError(e.message); })
       .finally(() => { if (!controller.signal.aborted) setLoadingBooks(false); });
     return () => controller.abort();
-  }, [translation]);
+  }, [translation, retryCount]);
 
   useEffect(() => {
     if (!book) return undefined;
@@ -215,7 +216,7 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
             <button className="secondary compact" disabled={loadingChapter || !books.length || (bookIndex === books.length - 1 && chapter === totalChapters)} onClick={() => { if (chapter < totalChapters) chooseChapter(chapter + 1); else if (bookIndex + 1 < books.length) chooseBook(books[bookIndex + 1].name); }}>Chapter →</button>
           </div>
           {loadingBooks || loadingChapter ? <p role="status" className="bible-status">Loading Scripture…</p> : null}
-          {error && <p role="alert" className="bible-error">{error} <button className="secondary compact" onClick={() => setTranslation(prev => { setBook(''); return prev === 'KJV' ? 'ALMEIDA-RC' : 'KJV'; })}>Retry</button></p>}
+          {error && <p role="alert" className="bible-error">{error} <button className="secondary compact" onClick={() => setRetryCount(count => count + 1)}>Retry</button></p>}
           <small>Source: VERSE-FLOW. Translations load only when selected.</small>
         </section>
 
