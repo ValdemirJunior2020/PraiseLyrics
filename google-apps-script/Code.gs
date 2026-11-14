@@ -32,6 +32,9 @@ function setupDatabase() {
   const settingsSheet = spreadsheet.getSheetByName(DISPLAY_SETTINGS_TAB) || spreadsheet.insertSheet(DISPLAY_SETTINGS_TAB);
   settingsSheet.getRange(1, 1, 1, 3).setValues([['profile', 'settings_json', 'updated_at']]);
   settingsSheet.setFrozenRows(1);
+  const bibleSheet = spreadsheet.getSheetByName(BIBLE_SETTINGS_TAB) || spreadsheet.insertSheet(BIBLE_SETTINGS_TAB);
+  bibleSheet.getRange(1, 1, 1, 3).setValues([['profile','settings_json','updated_at']]);
+  bibleSheet.setFrozenRows(1);
   if (!sheet.getFilter()) sheet.getRange(1, 1, Math.max(2, sheet.getLastRow()), CONFIG.columns.length).createFilter();
   return 'PraiseLyrics database is ready. Existing rows were preserved.';
 }
@@ -107,6 +110,37 @@ function saveDisplaySettings_(settings) {
   return { settings: safe, updated_at };
 }
 
+
+/** Bible appearance lives in its own tab; does not read/write Display Settings. */
+const BIBLE_SETTINGS_TAB = 'Bible Settings';
+function getBibleSettingsSheet_() {
+  const book = SpreadsheetApp.openById(CONFIG.spreadsheetId);
+  const sheet = book.getSheetByName(BIBLE_SETTINGS_TAB);
+  if (!sheet) throw new Error('Missing Bible Settings tab. Run setupDatabase().');
+  return sheet;
+}
+function getBibleSettings_() {
+  const sheet = getBibleSettingsSheet_();
+  if (sheet.getLastRow() <= 1) return {settings: null, updated_at: ''};
+  const data = sheet.getRange(2, 1, sheet.getLastRow()-1, 3).getValues();
+  const row = data.find(r => String(r[0]).trim() === 'default');
+  if (!row) return {settings:null,updated_at:''};
+  return {settings: sanitizeDisplaySettings_(JSON.parse(String(row[1]||'{}'))), updated_at:String(row[2]||'')};
+}
+function saveBibleSettings_(settings) {
+  const safe = sanitizeDisplaySettings_(settings);
+  if (safe.backgroundImage && !/^https:\/\//i.test(safe.backgroundImage)) {
+    throw new Error('Bible background image must be an HTTPS URL.');
+  }
+  const sheet=getBibleSettingsSheet_();
+  const ids=sheet.getLastRow()>1?sheet.getRange(2,1,sheet.getLastRow()-1,1).getValues().flat().map(String):[];
+  const index=ids.indexOf('default');
+  const row=index>=0?index+2:sheet.getLastRow()+1;
+  const updated_at=new Date().toISOString();
+  sheet.getRange(row,1,1,3).setValues([['default',JSON.stringify(safe),updated_at]]);
+  return {settings:safe,updated_at};
+}
+
 function json_(payload) {
   return ContentService.createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
@@ -146,6 +180,7 @@ function readRows_() {
 function doGet(e) {
   try {
     const p = (e && e.parameter) || {};
+    if (p.action === 'bibleSettings') return json_({ok:true,...getBibleSettings_()});
     if (p.action === 'settings') {
       return json_({ ok: true, ...getDisplaySettings_() });
     }
@@ -172,7 +207,7 @@ function doPost(e) {
   const lock = LockService.getScriptLock();
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
-    if (body.action === 'saveSettings') {
+    if (body.action === 'saveSettings' || body.action === 'saveBibleSettings') {
       // The four-digit settings PIN is stored only in Apps Script's private Script Properties.
       // Do not add it to this public repository or to browser JavaScript.
       const pin = PropertiesService.getScriptProperties().getProperty('SETTINGS_PIN');
@@ -187,7 +222,7 @@ function doPost(e) {
       }
       lock.waitLock(15000);
       cache.remove('settings_pin_failures');
-      return json_({ ok: true, ...saveDisplaySettings_(body.settings) });
+      return json_({ ok: true, ...(body.action === 'saveBibleSettings' ? saveBibleSettings_(body.settings) : saveDisplaySettings_(body.settings)) });
     }
     const token = PropertiesService.getScriptProperties().getProperty('ADMIN_WRITE_TOKEN');
     if (!token || token.length < 24) return json_({ ok: false, error: 'Writes disabled.' });
