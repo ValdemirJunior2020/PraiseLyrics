@@ -567,6 +567,63 @@ function ControlView() {
   const [liveIndex, setLiveIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [style, setStyle] = useState(DEFAULT_STYLE);
+  const [cloudSettingsToken, setCloudSettingsToken] = useState('');
+  const [cloudSettingsStatus, setCloudSettingsStatus] = useState('');
+  const [cloudSettingsLoading, setCloudSettingsLoading] = useState(false);
+  const [cloudAutoSave, setCloudAutoSave] = useState(false);
+
+  async function restoreCloudSettings() {
+    setCloudSettingsLoading(true);
+    try {
+      const response = await fetch('/api/display-settings', { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Cloud settings unavailable');
+      if (data.settings && Object.keys(data.settings).length) {
+        setStyle((current) => ({ ...current, ...data.settings }));
+        setCloudSettingsStatus('Cloud appearance settings restored ✓');
+      } else {
+        setCloudSettingsStatus('No cloud settings saved yet; current local settings kept.');
+      }
+    } catch (error) {
+      setCloudSettingsStatus(error.message || 'Cloud settings unavailable; local settings kept.');
+    } finally {
+      setCloudSettingsLoading(false);
+    }
+  }
+
+  async function saveCloudSettings(nextStyle = style, auto = false) {
+    const token = cloudSettingsToken.trim();
+    if (token.length < 24) {
+      if (!auto) setCloudSettingsStatus('Add your admin key (24+ characters) to enable cloud saving.');
+      return;
+    }
+    if (!auto) setCloudSettingsLoading(true);
+    try {
+      const response = await fetch('/api/display-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, settings: nextStyle }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Could not save settings.');
+      setCloudAutoSave(true);
+      setCloudSettingsStatus('Saved in Google Sheets ✓ — future adjustments auto-save.');
+    } catch (error) {
+      setCloudSettingsStatus(error.message || 'Settings were not saved.');
+      if (auto) setCloudAutoSave(false);
+    } finally {
+      if (!auto) setCloudSettingsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!cloudAutoSave || cloudSettingsToken.trim().length < 24) return undefined;
+    const timer = setTimeout(() => {
+      saveCloudSettings(style, true);
+    }, 1400);
+    return () => clearTimeout(timer);
+  }, [style, cloudAutoSave, cloudSettingsToken]);
+
   const [blank, setBlank] = useState(true);
   const [editingSlide, setEditingSlide] = useState(null);
   const [positionSlide, setPositionSlide] = useState(null);
@@ -669,6 +726,11 @@ function ControlView() {
     }
     browserBackupReadyRef.current = true;
   }, []);
+  // Load shared settings after the existing local browser backup has been restored.
+  useEffect(() => {
+    restoreCloudSettings();
+  }, []);
+
 
   useEffect(() => {
     if (!browserBackupReadyRef.current) return undefined;
@@ -1637,6 +1699,31 @@ function ControlView() {
                     <span>{preset.name}</span>
                   </button>
                 ))}
+              </div>
+
+              <div className="cloud-settings-panel">
+                <strong>☁ Cloud display settings</strong>
+                <small>Save font size, up/down position, color, width and other appearance settings to Google Sheets. Saved settings are shared by your devices.</small>
+                <input
+                  type="password"
+                  autoComplete="off"
+                  placeholder="Admin key (kept only in this tab)"
+                  aria-label="Cloud settings admin key"
+                  value={cloudSettingsToken}
+                  onChange={(event) => {
+                    setCloudSettingsToken(event.target.value);
+                    setCloudAutoSave(false);
+                  }}
+                />
+                <div className="cloud-settings-actions">
+                  <button className="primary" disabled={cloudSettingsLoading} onClick={() => saveCloudSettings()}>
+                    {cloudSettingsLoading ? 'Saving…' : '☁ Save to Google Sheets'}
+                  </button>
+                  <button className="secondary" disabled={cloudSettingsLoading} onClick={restoreCloudSettings}>
+                    ↻ Restore from Sheets
+                  </button>
+                </div>
+                <small role="status">{cloudSettingsStatus || 'Your browser backup continues to work even without cloud saving.'}</small>
               </div>
 
               <div className="control-grid">
