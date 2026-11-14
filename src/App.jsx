@@ -104,6 +104,13 @@ const DEFAULT_STYLE = {
   verticalOffset: 0,
 };
 
+const DEFAULT_BIBLE_STYLE = {
+  ...DEFAULT_STYLE, fontSize: 76, overlay: 0.4, lineHeight: 1.25,
+  verticalOffset: 0, background: '#000000', backgroundImage: ''
+};
+const BIBLE_LOCAL_SETTINGS_KEY = 'praise-lyrics-bible-style-v1';
+
+
 const COPY = {
   en: {
     appTitle: 'Church Lyrics Control',
@@ -569,6 +576,15 @@ function ControlView() {
   const [liveIndex, setLiveIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [style, setStyle] = useState(DEFAULT_STYLE);
+  const [bibleStyle, setBibleStyle] = useState(() => {
+    try {
+      return { ...DEFAULT_BIBLE_STYLE, ...JSON.parse(localStorage.getItem(BIBLE_LOCAL_SETTINGS_KEY)||'{}') };
+    } catch { return DEFAULT_BIBLE_STYLE; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(BIBLE_LOCAL_SETTINGS_KEY, JSON.stringify(bibleStyle)); } catch {}
+  }, [bibleStyle]);
+
   const [globalSettingsOpen, setGlobalSettingsOpen] = useState(false);
   const [globalPinOpen, setGlobalPinOpen] = useState(false);
   const [globalPin, setGlobalPin] = useState('');
@@ -1460,7 +1476,7 @@ function ControlView() {
       at: Date.now(),
       lyricsTitle: verse?.reference || 'Scripture',
       slide: !forceBlank && verse ? { id: 'bible-verse', label: verse.reference, text: verse.reference + '\n\n' + verse.text } : null,
-      style: { ...style, verticalOffset: Number(style.verticalOffset || 0) },
+      style: { ...bibleStyle, verticalOffset: Number(bibleStyle.verticalOffset || 0) },
       blank: forceBlank
     };
     const channel = new BroadcastChannel(CHANNEL_NAME);
@@ -1473,8 +1489,8 @@ function ControlView() {
     return (
       <React.Suspense fallback={<div className="app-shell"><p>Opening Bible mode…</p></div>}>
         <BibleMode
-          style={style}
-          setStyle={setStyle}
+          style={bibleStyle}
+          setStyle={setBibleStyle}
           onBack={showLyricsMode}
           onOpenWall={openWall}
           onSendBible={sendBibleVerse}
