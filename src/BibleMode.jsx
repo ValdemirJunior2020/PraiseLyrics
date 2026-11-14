@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './BibleMode.css';
+import { readPrivateBible, savePrivateBible, parsePrivateBible, getPrivateChapter } from './privateBible.js';
 
 const TRANSLATIONS = [
-  { code: 'NKJV', label: '⭐ NKJV — favorite (licensed source needed)', disabled: true },
+  { code: 'NKJV', label: '⭐ English — NKJV (local import)' },
   { code: 'KJV', label: '🇺🇸 English — KJV' },
   { code: 'ALMEIDA-RC', label: '🇧🇷 Português — Almeida' },
   { code: 'RV1909', label: '🇪🇸 Español — Reina-Valera 1909' },
@@ -19,6 +20,9 @@ async function requestBible(params, signal) {
 
 export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendBible, onBlankBible }) {
   const [translation, setTranslation] = useState('KJV');
+  const [privateBible, setPrivateBible] = useState(null);
+  const [privateBibleStatus, setPrivateBibleStatus] = useState('');
+  const [importing, setImporting] = useState(false);
   const [books, setBooks] = useState([]);
   const [book, setBook] = useState('');
   const [chapter, setChapter] = useState(1);
@@ -78,16 +82,23 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
     setChapter(1);
     setVerseNumber(1);
     setIsLive(false);
-    requestBible({ action: 'books', translation }, controller.signal)
-      .then((data) => {
+    (translation === 'NKJV'
+      ? readPrivateBible('NKJV').then(bible => {
+          if (!bible) throw new Error('Import your NKJV JSON file below to enable this translation on this device.');
+          if (!controller.signal.aborted) setPrivateBible(bible);
+          return { books: bible.books };
+        })
+      : requestBible({ action: 'books', translation }, controller.signal)
+    ).then((data) => {
+        if (controller.signal.aborted) return;
         const available = data.books || [];
         setBooks(available);
-        setBook(available[0]?.name || '');
+        setBook(available.find(b => /^(John|João|Juan)$/i.test(b.name))?.name || available[0]?.name || '');
       })
       .catch((e) => { if (e.name !== 'AbortError') setError(e.message); })
       .finally(() => { if (!controller.signal.aborted) setLoadingBooks(false); });
     return () => controller.abort();
-  }, [translation, retryCount]);
+  }, [translation, retryCount, privateBible?.importedAt]);
 
   useEffect(() => {
     if (!book) return undefined;
@@ -96,8 +107,10 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
     setLoadingChapter(true);
     setVerses([]);
     setError('');
-    requestBible({ action: 'chapter', translation, book, chapter }, controller.signal)
-      .then((data) => {
+    (translation === 'NKJV'
+      ? Promise.resolve(getPrivateChapter(privateBible, book, chapter))
+      : requestBible({ action: 'chapter', translation, book, chapter }, controller.signal)
+    ).then((data) => {
         if (id !== nextRequest.current) return;
         const list = (data.verses || []).filter(v => Number.isInteger(Number(v.number)));
         setVerses(list);
@@ -107,13 +120,36 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
       .catch((e) => { if (e.name !== 'AbortError') setError(e.message); })
       .finally(() => { if (!controller.signal.aborted) setLoadingChapter(false); });
     return () => controller.abort();
-  }, [translation, book, chapter]);
+  }, [translation, book, chapter, privateBible]);
 
   const bookIndex = books.findIndex(b => b.name === book);
   const totalChapters = books[bookIndex]?.chapters || 1;
   const selectedVerse = useMemo(() => verses.find(v => v.number === Number(verseNumber)), [verses, verseNumber]);
   const reference = `${book} ${chapter}:${verseNumber}`;
   const canSend = Boolean(selectedVerse?.text) && !loadingChapter && !error;
+
+  async function importNKJV(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setPrivateBibleStatus('Reading your authorized NKJV copy locally…');
+    try {
+      if (file.size > 20 * 1024 * 1024) throw Error('Please select a Bible JSON file smaller than 20 MB.');
+      const contents = JSON.parse(await file.text());
+      const bible = parsePrivateBible(contents);
+      await savePrivateBible('NKJV', bible);
+      setPrivateBible(bible);
+      setTranslation('NKJV');
+      setRetryCount(count => count + 1);
+      setPrivateBibleStatus('✓ NKJV imported and saved in this browser. It is never uploaded.');
+      setError('');
+    } catch (error) {
+      setPrivateBibleStatus(error.message || 'Could not import NKJV.');
+    } finally {
+      setImporting(false);
+      event.target.value = '';
+    }
+  }
 
   function chooseBook(name) { chooseLastAfterLoad.current = false; setIsLive(false); setBook(name); setChapter(1); setVerseNumber(1); }
   function chooseChapter(number) { chooseLastAfterLoad.current = false; setIsLive(false); setChapter(number); setVerseNumber(1); }
@@ -270,9 +306,19 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
           <div className="bible-mode-label">SELECT SCRIPTURE</div>
           <label>Translation
             <select value={translation} onChange={e => setTranslation(e.target.value)}>
-              {TRANSLATIONS.map(t => <option key={t.code} value={t.code} disabled={t.disabled}>{t.label}</option>)}
+              {TRANSLATIONS.map(t => <option key={t.code} value={t.code}>{t.label}</option>)}
             </select>
           </label>
+          {translation === 'NKJV' && (
+            <div className="bible-import-nkjv">
+              <label className="bible-import-file">
+                {importing ? 'Importing NKJV…' : '⬆ Import your NKJV .json'}
+                <input type="file" accept=".json,application/json" disabled={importing} onChange={importNKJV}/>
+              </label>
+              <small>Your own NKJV copy is stored only in this browser, never on our servers. It must be a complete VerseFlow-style JSON file.</small>
+              {privateBibleStatus && <small role="status">{privateBibleStatus}</small>}
+            </div>
+          )}
           <label>Book
             <select value={book} disabled={!books.length || loadingBooks} onChange={e => chooseBook(e.target.value)}>
               {books.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
@@ -297,7 +343,7 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
           </div>
           {loadingBooks || loadingChapter ? <p role="status" className="bible-status">Loading Scripture…</p> : null}
           {error && <p role="alert" className="bible-error">{error} <button className="secondary compact" onClick={() => setRetryCount(count => count + 1)}>Retry</button></p>}
-          <small>Source: VERSE-FLOW. Translations load only when selected. NKJV is pinned as favorite, but displaying its copyrighted text requires a licensed provider.</small>
+          <small>Source: VERSE-FLOW. Public-domain translations load on demand. NKJV uses only a local copy you import with permission.</small>
         </section>
 
         <section className="panel bible-reading">
