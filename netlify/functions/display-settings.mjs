@@ -1,5 +1,5 @@
 // Read cloud display settings and save them through the Google Apps Script API.
-// Saving requires the admin token configured in Apps Script Script Properties.
+// Saving requires the private SETTINGS_PIN configured in Apps Script Script Properties.
 const headers = { 'content-type': 'application/json', 'cache-control': 'no-store' };
 function reply(payload, status = 200) {
   return Response.json(payload, { status, headers });
@@ -27,14 +27,14 @@ export default async function handler(request) {
       return reply(result);
     }
     const body = await request.json();
-    if (typeof body.token !== 'string' || body.token.length < 24 ||
+    if (typeof body.pin !== 'string' || !/^\\d{4}$/.test(body.pin) ||
         !body.settings || typeof body.settings !== 'object') {
-      return reply({ ok: false, error: 'Enter your admin key to save settings.' }, 400);
+      return reply({ ok: false, error: 'Enter the 4-digit PIN to save settings.' }, 400);
     }
     const response = await fetch(url.toString(), {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'saveSettings', token: body.token, settings: body.settings }),
+      body: JSON.stringify({ action: 'saveSettings', pin: body.pin, settings: body.settings }),
       redirect: 'follow',
       signal: AbortSignal.timeout(15000)
     });
