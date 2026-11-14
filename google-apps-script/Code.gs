@@ -29,8 +29,82 @@ function setupDatabase() {
   const sheet = spreadsheet.getSheetByName(CONFIG.sheetName) || spreadsheet.insertSheet(CONFIG.sheetName);
   sheet.getRange(1, 1, 1, CONFIG.columns.length).setValues([CONFIG.columns]);
   sheet.setFrozenRows(1);
+  const settingsSheet = spreadsheet.getSheetByName(DISPLAY_SETTINGS_TAB) || spreadsheet.insertSheet(DISPLAY_SETTINGS_TAB);
+  settingsSheet.getRange(1, 1, 1, 3).setValues([['profile', 'settings_json', 'updated_at']]);
+  settingsSheet.setFrozenRows(1);
   if (!sheet.getFilter()) sheet.getRange(1, 1, Math.max(2, sheet.getLastRow()), CONFIG.columns.length).createFilter();
   return 'PraiseLyrics database is ready. Existing rows were preserved.';
+}
+
+
+/**
+ * Global worship display profile (independent of the song library).
+ * This profile is shared by all devices using PraiseLyrics.
+ */
+const DISPLAY_SETTINGS_TAB = 'Display Settings';
+const DISPLAY_PROFILE = 'default';
+const SETTINGS_KEYS = [
+  'background', 'backgroundImage', 'overlay', 'textColor', 'fontSize',
+  'fontFamily', 'fontWeight', 'textAlign', 'lineHeight', 'textShadow',
+  'maxWidth', 'verticalOffset'
+];
+
+function getDisplaySettingsSheet_() {
+  const book = SpreadsheetApp.openById(CONFIG.spreadsheetId);
+  const sheet = book.getSheetByName(DISPLAY_SETTINGS_TAB);
+  if (!sheet) throw new Error('Missing Display Settings tab. Run setupDatabase().');
+  return sheet;
+}
+
+function sanitizeDisplaySettings_(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Invalid display settings.');
+  }
+  const safe = {};
+  const numeric = { overlay: [0, 0.85], fontSize: [24, 320], fontWeight: [100, 900], lineHeight: [0.8, 3], maxWidth: [50, 96], verticalOffset: [-45, 45] };
+  for (const key of SETTINGS_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+    const v = value[key];
+    if (key in numeric) {
+      const num = Number(v);
+      if (!Number.isFinite(num)) throw new Error('Invalid numeric value: ' + key);
+      safe[key] = Math.max(numeric[key][0], Math.min(numeric[key][1], num));
+    } else if (key === 'textShadow') {
+      safe[key] = Boolean(v);
+    } else if (key === 'textAlign') {
+      if (!['left','right','center'].includes(v)) throw new Error('Invalid alignment.');
+      safe[key] = v;
+    } else if (typeof v === 'string' && v.length <= 1500) {
+      safe[key] = v;
+    }
+  }
+  return safe;
+}
+
+function getDisplaySettings_() {
+  const sheet = getDisplaySettingsSheet_();
+  const last = sheet.getLastRow();
+  if (last <= 1) return { settings: null, updated_at: '' };
+  const rows = sheet.getRange(2, 1, last - 1, 3).getValues();
+  const row = rows.find(item => String(item[0]).trim() === DISPLAY_PROFILE);
+  if (!row) return { settings: null, updated_at: '' };
+  try {
+    return { settings: sanitizeDisplaySettings_(JSON.parse(String(row[1]) || '{}')), updated_at: String(row[2] || '') };
+  } catch (_) {
+    throw new Error('Display settings are malformed.');
+  }
+}
+
+function saveDisplaySettings_(settings) {
+  const safe = sanitizeDisplaySettings_(settings);
+  const sheet = getDisplaySettingsSheet_();
+  const last = sheet.getLastRow();
+  const ids = last > 1 ? sheet.getRange(2, 1, last - 1, 1).getValues().flat().map(String) : [];
+  const position = ids.indexOf(DISPLAY_PROFILE);
+  const row = position >= 0 ? position + 2 : last + 1;
+  const updated_at = new Date().toISOString();
+  sheet.getRange(row, 1, 1, 3).setValues([[DISPLAY_PROFILE, JSON.stringify(safe), updated_at]]);
+  return { settings: safe, updated_at };
 }
 
 function json_(payload) {
@@ -72,6 +146,9 @@ function readRows_() {
 function doGet(e) {
   try {
     const p = (e && e.parameter) || {};
+    if (p.action === 'settings') {
+      return json_({ ok: true, ...getDisplaySettings_() });
+    }
     const q = String(p.q || '').trim().toLocaleLowerCase();
     const requestedLimit = Number(p.limit || 100);
     const limit = Math.max(1, Math.min(500, Number.isFinite(requestedLimit) ? requestedLimit : 100));
@@ -98,6 +175,10 @@ function doPost(e) {
     if (!token || token.length < 24) return json_({ ok: false, error: 'Writes disabled.' });
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (body.token !== token) return json_({ ok: false, error: 'Unauthorized.' });
+    if (body.action === 'saveSettings') {
+      lock.waitLock(15000);
+      return json_({ ok: true, ...saveDisplaySettings_(body.settings) });
+    }
     if (body.action !== 'upsert') return json_({ ok: false, error: 'Unsupported action.' });
     const song = body.song || {};
     const title = String(song.title || '').trim();
