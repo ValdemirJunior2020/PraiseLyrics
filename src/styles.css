@@ -563,3 +563,9 @@ body:has(.display-root),
 .global-vertical-footer { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
 .global-vertical-footer small { color: #b4c9b9; font-size: 11px; line-height: 1.35; }
 .global-vertical-footer button { flex: 0 0 auto; }
+
+
+/* Reliable Windows .url shortcut download, separate from browser PWA installation. */
+.desktop-shortcut-download { display: inline-flex; justify-content: center; align-items: center; text-align: center; text-decoration: none; border: 1px solid #3b82f6; border-radius: 10px; padding: 10px 14px; color: #fff; font-weight: 700; background: #2563eb; cursor: pointer; line-height: 1.3; }
+.desktop-shortcut-download:hover, .desktop-shortcut-download:focus-visible { color: #fff; background: #1d4ed8; outline: 2px solid #93c5fd; outline-offset: 2px; }
+.install-actions { flex-wrap: wrap; }
