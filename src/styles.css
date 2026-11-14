@@ -517,3 +517,13 @@ body:has(.display-root),
 .cloud-lyrics-search-row input:focus { outline: 2px solid #22c55e; outline-offset: 2px; }
 .cloud-lyrics-search-row button { flex: 0 0 auto; padding: 9px 10px; white-space: nowrap; }
 .cloud-lyrics-search small { font-size: 11px; color: #b6c8d5; line-height: 1.4; overflow-wrap: anywhere; }
+
+
+/* Shared, protected Google Sheets presentation profile. */
+.cloud-settings-panel { display: grid; gap: 9px; padding: 14px; margin: 14px 0; border: 1px solid #2f654b; border-radius: 12px; background: rgba(22, 101, 52, .12); }
+.cloud-settings-panel strong { color: #86efac; font-weight: 800; }
+.cloud-settings-panel small { color: #c1d2c9; line-height: 1.4; }
+.cloud-settings-panel input[type=password] { width: 100%; background: #0c1711; border: 1px solid #456b54; border-radius: 8px; padding: 10px 12px; color: #f8fafc; }
+.cloud-settings-panel input[type=password]:focus { outline: 2px solid #22c55e; outline-offset: 2px; }
+.cloud-settings-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cloud-settings-actions button { flex: 1 1 160px; }
