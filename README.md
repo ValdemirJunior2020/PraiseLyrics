@@ -79,3 +79,5 @@ server-side and must not be prefixed with `VITE_`.
   token must never be embedded in client-side JavaScript.
 
 The existing browser/library songs remain available when the external database is offline.
+
+Global appearance controls require the current Apps Script deployment and a private `SETTINGS_PIN` Script Property in Google Apps Script; setting the Netlify API URL alone does not configure the PIN.
