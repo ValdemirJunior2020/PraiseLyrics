@@ -38,3 +38,13 @@
 .bible-appearance small { color: #94a3b8; }
 @media(max-width:850px){.bible-workspace{grid-template-columns:1fr}.bible-settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.bible-reading{min-height:360px}}
 @media(max-width:520px){.bible-topbar-actions button{flex:1 1 140px}.bible-navigation-actions{grid-template-columns:1fr 1fr}.bible-navigation-actions .bible-send{grid-column:1/-1;grid-row:1}.bible-workspace .panel{padding:14px}.bible-settings-grid{grid-template-columns:1fr}}
+
+
+/* Dedicated Bible appearance controls — independent of lyric settings. */
+.bible-settings-grid input[type=url] { width: 100%; background: #101927; color: #f8fafc; border: 1px solid #334155; border-radius: 9px; padding: 12px; min-height: 44px; }
+.bible-settings-grid input[type=url]:focus { outline: 2px solid #4ade80; outline-offset: 2px; }
+.bible-settings-grid .bible-checkbox { display: flex; align-items: center; flex-direction: row; gap: 8px; }
+.bible-checkbox input { accent-color: #22c55e; width: 18px; height: 18px; }
+.bible-cloud-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.bible-cloud-actions button { padding: 12px 18px; }
+.bible-reading-verse { background-repeat: no-repeat; background-position: center; background-size: cover; }
