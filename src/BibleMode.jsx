@@ -228,7 +228,7 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
         </div>
         <div className="bible-topbar-actions">
           <button className="secondary" onClick={onBack}>♫ Back to Lyrics</button>
-          <button className="secondary" onClick={() => setShowAppearance(current => !current)} aria-expanded={showAppearance}>⚙ Display Settings</button>
+          <button className="secondary" onClick={() => settingsDockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>⚙ Display Settings ↓</button>
           <button className="primary" onClick={openBibleWall}>Open Wall</button>
           <button className="danger" onClick={() => { onBlankBible(); setIsLive(false); }}>Blank Wall</button>
         </div>
@@ -364,20 +364,9 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
         </div>
         {settingsMessage && <small role="status" className="bible-settings-status">{settingsMessage}</small>}
         {showAppearance && (
-        <section className="panel bible-appearance bible-advanced" aria-label="Bible display settings">
-          <strong>Configurações exclusivas da Bíblia · Bible-only settings</strong>
-          <div className="bible-settings-grid">
-            <label>Font size: {style.fontSize}px
-              <input type="range" min="24" max="320" value={style.fontSize} onChange={e => changeStyle('fontSize', Number(e.target.value))} />
-            </label>
-            <label>Vertical position: {style.verticalOffset || 0}
-              <input type="range" min="-45" max="45" value={style.verticalOffset || 0} onChange={e => changeStyle('verticalOffset', Number(e.target.value))} />
-            </label>
-            <label>Text width: {style.maxWidth}%
-              <input type="range" min="50" max="96" value={style.maxWidth} onChange={e => changeStyle('maxWidth', Number(e.target.value))} />
-            </label>
+          <div className="bible-mini-advanced" aria-label="Additional Bible display settings">
             <label>Font
-              <select value={style.fontFamily} onChange={e => changeStyle('fontFamily', e.target.value)}>
+              <select value={style.fontFamily} onChange={e=>changeStyle('fontFamily',e.target.value)}>
                 <option value="Arial, Helvetica, sans-serif">Arial</option>
                 <option value="Georgia, serif">Georgia</option>
                 <option value="Verdana, sans-serif">Verdana</option>
@@ -385,52 +374,36 @@ export default function BibleMode({ style, setStyle, onBack, onOpenWall, onSendB
                 <option value="system-ui, sans-serif">System</option>
               </select>
             </label>
-            <label>Text color
-              <input type="color" value={style.textColor} onChange={e => changeStyle('textColor', e.target.value)} />
-            </label>
             <label>Alignment
-              <select value={style.textAlign} onChange={e => changeStyle('textAlign', e.target.value)}>
+              <select value={style.textAlign} onChange={e=>changeStyle('textAlign',e.target.value)}>
                 <option value="center">Center</option><option value="left">Left</option><option value="right">Right</option>
               </select>
             </label>
-          </div>
-          <div className="bible-settings-grid">
-            <label>Background color
-              <input type="color" value={/^#[0-9a-f]{6}$/i.test(style.background || '') ? style.background : '#000000'} onChange={e => changeStyle('background',e.target.value)} />
+            <label>Text width <span>{style.maxWidth}%</span>
+              <input type="range" min="50" max="96" value={style.maxWidth} onChange={e=>changeStyle('maxWidth',Number(e.target.value))}/>
             </label>
-            <label>Background image URL (HTTPS)
-              <input type="url" placeholder="https://example.com/background.jpg" value={style.backgroundImage || ''} onChange={e => changeStyle('backgroundImage', e.target.value)} />
+            <label>Line spacing <span>{style.lineHeight||1.25}</span>
+              <input type="range" min="0.8" max="2.5" step="0.05" value={style.lineHeight||1.25} onChange={e=>changeStyle('lineHeight',Number(e.target.value))}/>
             </label>
-            <label>Image darkness: {Math.round((style.overlay || 0)*100)}%
-              <input type="range" min="0" max="0.85" step="0.05" value={style.overlay || 0} onChange={e => changeStyle('overlay',Number(e.target.value))} />
-            </label>
-            <label>Line spacing: {style.lineHeight || 1.25}
-              <input type="range" min="0.8" max="2.5" step="0.05" value={style.lineHeight || 1.25} onChange={e => changeStyle('lineHeight',Number(e.target.value))} />
+            <label>Darkness <span>{Math.round((style.overlay||0)*100)}%</span>
+              <input type="range" min="0" max="0.85" step="0.05" value={style.overlay||0} onChange={e=>changeStyle('overlay',Number(e.target.value))}/>
             </label>
             <label>Font weight
-              <select value={style.fontWeight || 700} onChange={e => changeStyle('fontWeight',Number(e.target.value))}>
+              <select value={style.fontWeight||700} onChange={e=>changeStyle('fontWeight',Number(e.target.value))}>
                 <option value="400">Normal</option><option value="600">Semibold</option><option value="700">Bold</option><option value="800">Extra bold</option>
               </select>
             </label>
-            <label className="bible-checkbox"><input type="checkbox" checked={Boolean(style.textShadow)} onChange={e => changeStyle('textShadow',e.target.checked)}/> Text shadow</label>
-          </div>
-          <div className="bible-pos-buttons">
-            <button className="secondary compact" onClick={() => changeStyle('verticalOffset', Math.max(-45, Number(style.verticalOffset || 0) - 4))}>↑ Up</button>
-            <button className="secondary compact" onClick={() => changeStyle('verticalOffset', 0)}>Center</button>
-            <button className="secondary compact" onClick={() => changeStyle('verticalOffset', Math.min(45, Number(style.verticalOffset || 0) + 4))}>↓ Down</button>
-          </div>
-          <div className="bible-cloud-actions">
-            <button className="bible-send" type="button" onClick={() => { setPinPromptOpen(true); setSettingsMessage(''); }}>☁ Salvar somente a Bíblia</button>
-            <button className="secondary" type="button" onClick={() => { setStyle({
-              background:'#000000', backgroundImage:'', overlay:0.4, textColor:'#ffffff', fontSize:76,
-              fontFamily:'Arial, Helvetica, sans-serif', fontWeight:700, textAlign:'center',
+            <label className="bible-mini-check"><input type="checkbox" checked={Boolean(style.textShadow)} onChange={e=>changeStyle('textShadow',e.target.checked)}/> Text shadow</label>
+            <label className="bible-mini-image">Background image URL (HTTPS)
+              <input type="url" placeholder="https://example.com/background.jpg" value={style.backgroundImage||''} onChange={e=>changeStyle('backgroundImage',e.target.value)}/>
+            </label>
+            <button className="secondary compact" onClick={()=>setStyle({
+              background:'#000000',backgroundImage:'',overlay:0.4,textColor:'#ffffff',fontSize:76,
+              fontFamily:'Arial, Helvetica, sans-serif',fontWeight:700,textAlign:'center',
               lineHeight:1.25,textShadow:true,maxWidth:88,verticalOffset:0
-            }); }}>Reset Bible appearance</button>
+            })}>Reset Bible appearance</button>
           </div>
-          {settingsMessage && <small role="status">{settingsMessage}</small>}
-          <small>Saved separately to the Google Sheets “Bible Settings” tab. Lyrics settings never change.</small>
-        </section>
-      )}
+        )}
       </section>
     </div>
   );
