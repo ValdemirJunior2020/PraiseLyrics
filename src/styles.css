@@ -554,3 +554,12 @@ body:has(.display-root),
 .global-pin-dialog input { border: 1px solid #4b6554; background: #101e17; color: white; border-radius: 9px; text-align: center; font-size: 26px; letter-spacing: .35em; padding: 12px; width: 100%; }
 .global-pin-dialog small { color: #fbbf24; }
 @media (max-width: 700px) { .topbar { align-items: flex-start; flex-direction: column; } .topbar-actions { width: 100%; justify-content: flex-start; } .global-settings-popover { left: 0; right: auto; } }
+
+.global-vertical-controls { padding: 11px; border: 1px solid #345541; border-radius: 11px; background: #0b1912; display: grid; gap: 10px; }
+.global-vertical-header { display: flex; justify-content: space-between; align-items: center; color: #bbf7d0; font-size: 12px; }
+.global-vertical-row { display: flex; align-items: center; gap: 8px; }
+.global-vertical-row input[type="range"] { flex: 1; min-width: 50px; }
+.global-vertical-row button { flex: 0 0 auto; padding: 9px 11px; }
+.global-vertical-footer { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
+.global-vertical-footer small { color: #b4c9b9; font-size: 11px; line-height: 1.35; }
+.global-vertical-footer button { flex: 0 0 auto; }
