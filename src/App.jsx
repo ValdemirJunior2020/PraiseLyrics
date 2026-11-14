@@ -567,62 +567,61 @@ function ControlView() {
   const [liveIndex, setLiveIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [style, setStyle] = useState(DEFAULT_STYLE);
-  const [cloudSettingsToken, setCloudSettingsToken] = useState('');
+  const [globalSettingsOpen, setGlobalSettingsOpen] = useState(false);
+  const [globalPinOpen, setGlobalPinOpen] = useState(false);
+  const [globalPin, setGlobalPin] = useState('');
   const [cloudSettingsStatus, setCloudSettingsStatus] = useState('');
   const [cloudSettingsLoading, setCloudSettingsLoading] = useState(false);
-  const [cloudAutoSave, setCloudAutoSave] = useState(false);
+  const [lastSavedGlobalStyle, setLastSavedGlobalStyle] = useState(null);
 
   async function restoreCloudSettings() {
     setCloudSettingsLoading(true);
     try {
       const response = await fetch('/api/display-settings', { cache: 'no-store' });
       const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error(data.error || 'Cloud settings unavailable');
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Cloud settings unavailable.');
       if (data.settings && Object.keys(data.settings).length) {
         setStyle((current) => ({ ...current, ...data.settings }));
-        setCloudSettingsStatus('Cloud appearance settings restored ✓');
+        setLastSavedGlobalStyle(data.settings);
+        setCloudSettingsStatus('Global appearance restored from Google Sheets.');
       } else {
-        setCloudSettingsStatus('No cloud settings saved yet; current local settings kept.');
+        setCloudSettingsStatus('No saved global preset yet. Your local settings are unchanged.');
       }
     } catch (error) {
-      setCloudSettingsStatus(error.message || 'Cloud settings unavailable; local settings kept.');
+      setCloudSettingsStatus(error.message || 'Cloud unavailable. Local settings remain available.');
     } finally {
       setCloudSettingsLoading(false);
     }
   }
 
-  async function saveCloudSettings(nextStyle = style, auto = false) {
-    const token = cloudSettingsToken.trim();
-    if (token.length < 24) {
-      if (!auto) setCloudSettingsStatus('Add your admin key (24+ characters) to enable cloud saving.');
+  async function confirmGlobalSettingsSave(event) {
+    event.preventDefault();
+    if (!/^\\d{4}$/.test(globalPin)) {
+      setCloudSettingsStatus('Enter your four-digit PIN.');
       return;
     }
-    if (!auto) setCloudSettingsLoading(true);
+    setCloudSettingsLoading(true);
+    setCloudSettingsStatus('');
     try {
       const response = await fetch('/api/display-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, settings: nextStyle }),
+        body: JSON.stringify({ pin: globalPin, settings: style }),
       });
       const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error(data.error || 'Could not save settings.');
-      setCloudAutoSave(true);
-      setCloudSettingsStatus('Saved in Google Sheets ✓ — future adjustments auto-save.');
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Could not save your global preset.');
+      setLastSavedGlobalStyle(data.settings);
+      setGlobalPin('');
+      setGlobalPinOpen(false);
+      setGlobalSettingsOpen(false);
+      setCloudSettingsStatus('Global preset saved to Google Sheets ✓');
     } catch (error) {
-      setCloudSettingsStatus(error.message || 'Settings were not saved.');
-      if (auto) setCloudAutoSave(false);
+      setCloudSettingsStatus(error.message || 'Could not save global preset.');
+      setGlobalPin('');
     } finally {
-      if (!auto) setCloudSettingsLoading(false);
+      setCloudSettingsLoading(false);
     }
   }
-
-  useEffect(() => {
-    if (!cloudAutoSave || cloudSettingsToken.trim().length < 24) return undefined;
-    const timer = setTimeout(() => {
-      saveCloudSettings(style, true);
-    }, 1400);
-    return () => clearTimeout(timer);
-  }, [style, cloudAutoSave, cloudSettingsToken]);
 
   const [blank, setBlank] = useState(true);
   const [editingSlide, setEditingSlide] = useState(null);
@@ -1426,6 +1425,56 @@ function ControlView() {
           <p>{t.appSubtitle}</p>
         </div>
         <div className="topbar-actions">
+          <div className="global-settings-anchor">
+            <button className="global-settings-trigger" aria-expanded={globalSettingsOpen} aria-controls="global-settings-popover" onClick={() => setGlobalSettingsOpen((open) => !open)}>
+              ⚙ Global Settings
+            </button>
+            {globalSettingsOpen && (
+              <div id="global-settings-popover" className="global-settings-popover" role="region" aria-label="Global worship settings">
+                <div className="global-settings-heading">
+                  <strong>Global Worship Settings</strong>
+                  <button className="ghost compact" aria-label="Close global settings" onClick={() => setGlobalSettingsOpen(false)}>✕</button>
+                </div>
+                <small>Adjust your presentation, then save it as the default for every existing and future song.</small>
+                <label>Font size <strong>{style.fontSize}px</strong>
+                  <input type="range" min="24" max="320" value={style.fontSize} onChange={(e) => setStyle((current) => ({ ...current, fontSize: Number(e.target.value) }))} />
+                </label>
+                <label>Move lyrics up / down <strong>{style.verticalOffset || 0}</strong>
+                  <input type="range" min="-45" max="45" value={style.verticalOffset || 0} onChange={(e) => setStyle((current) => ({ ...current, verticalOffset: Number(e.target.value) }))} />
+                </label>
+                <div className="global-settings-two">
+                  <label>Text color
+                    <input type="color" value={style.textColor} onChange={(e) => setStyle((current) => ({ ...current, textColor: e.target.value }))} />
+                  </label>
+                  <label>Width <strong>{style.maxWidth}%</strong>
+                    <input type="range" min="50" max="96" value={style.maxWidth} onChange={(e) => setStyle((current) => ({ ...current, maxWidth: Number(e.target.value) }))} />
+                  </label>
+                </div>
+                <label>Font
+                  <select value={style.fontFamily} onChange={(e) => setStyle((current) => ({ ...current, fontFamily: e.target.value }))}>
+                    <option value="Arial, Helvetica, sans-serif">Arial</option>
+                    <option value="Georgia, serif">Georgia</option>
+                    <option value="Verdana, sans-serif">Verdana</option>
+                    <option value="Trebuchet MS, sans-serif">Trebuchet</option>
+                    <option value="system-ui, sans-serif">System</option>
+                  </select>
+                </label>
+                <label>Alignment
+                  <select value={style.textAlign} onChange={(e) => setStyle((current) => ({ ...current, textAlign: e.target.value }))}>
+                    <option value="left">Left</option><option value="center">Center</option><option value="right">Right</option>
+                  </select>
+                </label>
+                <label className="global-settings-checkbox"><input type="checkbox" checked={style.textShadow} onChange={(e) => setStyle((current) => ({ ...current, textShadow: e.target.checked }))} /> Text shadow</label>
+                <p className="global-settings-question">Would you like all lyrics to use these settings from now on?</p>
+                <div className="global-settings-actions">
+                  <button className="global-confirm" onClick={() => { setGlobalPinOpen(true); setCloudSettingsStatus(''); }}>Yes, save it</button>
+                  <button className="secondary compact" onClick={() => setGlobalSettingsOpen(false)}>Not now</button>
+                  <button className="secondary compact" disabled={cloudSettingsLoading} onClick={restoreCloudSettings}>Restore saved</button>
+                </div>
+                {cloudSettingsStatus && <small role="status">{cloudSettingsStatus}</small>}
+              </div>
+            )}
+          </div>
           <div className="language-switch" aria-label="Language">
             <button className={language === 'en' ? 'flag-button active' : 'flag-button'} onClick={() => setLanguage('en')} title="English">🇺🇸</button>
             <button className={language === 'pt' ? 'flag-button active' : 'flag-button'} onClick={() => setLanguage('pt')} title="Português">🇧🇷</button>
@@ -1436,6 +1485,22 @@ function ControlView() {
         </div>
       </header>
 
+      {globalPinOpen && (
+        <div className="global-pin-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !cloudSettingsLoading) { setGlobalPinOpen(false); setGlobalPin(''); } }}>
+          <form className="global-pin-dialog" role="dialog" aria-modal="true" aria-labelledby="global-pin-title" onSubmit={confirmGlobalSettingsSave}>
+            <div className="global-pin-title"><strong id="global-pin-title">Save Global Worship Settings</strong>
+              <button type="button" className="ghost compact" aria-label="Close PIN dialog" onClick={() => { setGlobalPinOpen(false); setGlobalPin(''); }}>✕</button>
+            </div>
+            <p>Enter your 4-digit PIN to save these settings for all existing and future lyrics.</p>
+            <input autoFocus type="password" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} autoComplete="off" value={globalPin} onChange={(e) => setGlobalPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))} placeholder="••••" aria-label="Four-digit global settings PIN" required />
+            {cloudSettingsStatus && <small role="status">{cloudSettingsStatus}</small>}
+            <div className="global-settings-actions">
+              <button type="submit" className="global-confirm" disabled={cloudSettingsLoading || globalPin.length !== 4}>{cloudSettingsLoading ? 'Saving…' : 'Confirm & Save'}</button>
+              <button type="button" className="secondary" onClick={() => { setGlobalPinOpen(false); setGlobalPin(''); }}>Cancel</button>
+            </div>
+          </form>
+        </div>
+      )}
       <div className="savebar">
         <button className="sunday-1108-button compact" onClick={() => { const first = SUNDAY_2026_11_15_SONG_IDS.find((id) => lyricsList.some((song) => song.id === id)); if (first) openPlannedLyrics(first); setShowSunday1115(true); setShowToday(false); }}>11/15/26 Lyrics</button>
         <button className="secondary compact" onClick={openLocalLyrics}>📂 {t.openLocalLyrics}</button>
@@ -1699,31 +1764,6 @@ function ControlView() {
                     <span>{preset.name}</span>
                   </button>
                 ))}
-              </div>
-
-              <div className="cloud-settings-panel">
-                <strong>☁ Cloud display settings</strong>
-                <small>Save font size, up/down position, color, width and other appearance settings to Google Sheets. Saved settings are shared by your devices.</small>
-                <input
-                  type="password"
-                  autoComplete="off"
-                  placeholder="Admin key (kept only in this tab)"
-                  aria-label="Cloud settings admin key"
-                  value={cloudSettingsToken}
-                  onChange={(event) => {
-                    setCloudSettingsToken(event.target.value);
-                    setCloudAutoSave(false);
-                  }}
-                />
-                <div className="cloud-settings-actions">
-                  <button className="primary" disabled={cloudSettingsLoading} onClick={() => saveCloudSettings()}>
-                    {cloudSettingsLoading ? 'Saving…' : '☁ Save to Google Sheets'}
-                  </button>
-                  <button className="secondary" disabled={cloudSettingsLoading} onClick={restoreCloudSettings}>
-                    ↻ Restore from Sheets
-                  </button>
-                </div>
-                <small role="status">{cloudSettingsStatus || 'Your browser backup continues to work even without cloud saving.'}</small>
               </div>
 
               <div className="control-grid">
