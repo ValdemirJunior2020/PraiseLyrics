@@ -81,3 +81,5 @@ server-side and must not be prefixed with `VITE_`.
 The existing browser/library songs remain available when the external database is offline.
 
 Global appearance controls require the current Apps Script deployment and a private `SETTINGS_PIN` Script Property in Google Apps Script; setting the Netlify API URL alone does not configure the PIN.
+
+The Apps Script deployment URL is configured through Netlify environment settings; updates to that value require a fresh production deploy before the functions are guaranteed to use the new endpoint.
