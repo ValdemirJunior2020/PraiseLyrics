@@ -60,3 +60,22 @@ If Pages has not been enabled for the repository yet, open the repository settin
 ## Background images
 
 The control panel includes links to free Unsplash search pages for worship, cross, sunrise, mountains, ocean, sky, forest, and other church-friendly backgrounds. Download the image you want and upload it into PraiseLyrics. Keeping the selected background local in the browser makes the wall more reliable during a service.
+
+
+## Google Sheets lyrics database
+
+The live site reads full lyrics through the Netlify function at `/api/lyrics`.
+Its upstream is the deployed Google Apps Script URL configured as the
+`PRAISELYRICS_APPS_SCRIPT_URL` Netlify environment variable. The variable is
+server-side and must not be prefixed with `VITE_`.
+
+- Spreadsheet: [PraiseLyrics](https://docs.google.com/spreadsheets/d/1x6OVrZl85GP6fteGwGlkLLbCOxj6JfZdTwJMj4gqtns/edit)
+- Apps Script source: [google-apps-script/Code.gs](google-apps-script/Code.gs)
+- Search in the app: enter a title, artist, or lyric phrase, then select **Search Sheets**
+- Add new songs to the `Lyrics` tab, including `id`, `title`, `lyrics`, and
+  optionally `slides_json` with an array of presentation slide objects.
+- Read requests are public. Administrative writes are intentionally disabled unless
+  a strong `ADMIN_WRITE_TOKEN` is configured in Google Apps Script properties; that
+  token must never be embedded in client-side JavaScript.
+
+The existing browser/library songs remain available when the external database is offline.
