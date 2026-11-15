@@ -431,6 +431,11 @@ function BroadcastBridge({ onMessage }) {
 }
 
 function DisplayView() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = 'PraiseLyrics TV Wall';
+    return () => { document.title = previousTitle; };
+  }, []);
   const [live, setLive] = useState(() => buildLivePayload(null, 0, DEFAULT_STYLE, true));
   const [needsFullscreen, setNeedsFullscreen] = useState(() => !document.fullscreenElement);
   const receive = useCallback((payload) => {
